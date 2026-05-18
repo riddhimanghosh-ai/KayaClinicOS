@@ -4,6 +4,7 @@ out
 .DS_Store
 .env
 .env.local
+.env.production
 *.log
 .turbo
 # SQLite WAL shim files (not the DB itself — committed for Vercel cold-start)

@@ -1,0 +1,40 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm ci
+        - npm run build
+
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - node -e "
+            const fs = require('fs');
+            const env = {
+              GROQ_API_KEY: process.env.GROQ_API_KEY,
+              LLM_PROVIDER: process.env.LLM_PROVIDER || 'groq',
+              LLM_MODEL: process.env.LLM_MODEL || 'llama-3.3-70b-versatile',
+              OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+              OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+              NODE_ENV: 'production'
+            };
+            fs.writeFileSync('.env.production', Object.entries(env)
+              .filter(([_, v]) => v)
+              .map(([k, v]) => \`\${k}=\${v}\`)
+              .join('\n'));
+            console.log('✓ Environment variables written to .env.production');
+          "
+    build:
+      commands:
+        - npm ci
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - 'node_modules/**/*'
+      - '.next/cache/**/*'
