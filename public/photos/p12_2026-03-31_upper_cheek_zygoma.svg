@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm12_2" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxm12_2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm12_2"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm12_2" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm12_2)" filter="url(#fxm12_2)"/>
-<g filter="url(#pbm12_2)"><ellipse cx="120" cy="314" rx="88" ry="62" fill="#5A3008" opacity="0.175" transform="rotate(11,120,314)"/><ellipse cx="314" cy="249" rx="66" ry="22" fill="#5A3008" opacity="0.175" transform="rotate(10,314,249)"/><ellipse cx="218" cy="262" rx="48" ry="20" fill="#5A3008" opacity="0.175" transform="rotate(13,218,262)"/></g>
-<rect width="400" height="400" fill="url(#hlm12_2)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Gauri Desai</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-31</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: upper_cheek_zygoma</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="60" cy="237" r="4" fill="#AA3232" opacity="0.85" /><circle cx="138" cy="290" r="4" fill="#AA3232" opacity="0.85" /><circle cx="84" cy="299" r="4" fill="#AA3232" opacity="0.85" /><circle cx="105" cy="176" r="4" fill="#AA3232" opacity="0.85" /><circle cx="273" cy="176" r="7" fill="#AA3232" opacity="0.85" /><circle cx="83" cy="206" r="3" fill="#AA3232" opacity="0.85" /><circle cx="259" cy="210" r="5" fill="#AA3232" opacity="0.85" /><circle cx="92" cy="190" r="6" fill="#AA3232" opacity="0.85" /><circle cx="135" cy="174" r="5" fill="#AA3232" opacity="0.85" /><circle cx="127" cy="271" r="6" fill="#AA3232" opacity="0.85" /><circle cx="172" cy="211" r="4" fill="#AA3232" opacity="0.85" /><circle cx="66" cy="227" r="6" fill="#AA3232" opacity="0.85" />
 </svg>

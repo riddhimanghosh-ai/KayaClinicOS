@@ -1,28 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska8_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
-  <filter id="fxa8_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla8_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha8_0" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska8_0)" filter="url(#fxa8_0)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.180"/>
-<circle cx="51.3" cy="132.8" r="13.0" fill="#6B3030" opacity="0.60" />
-<circle cx="259.0" cy="151.4" r="13.9" fill="#8B2020" opacity="0.74" />
-<circle cx="35.7" cy="142.5" r="11.4" fill="#8B2020" opacity="0.79" />
-<circle cx="234.5" cy="96.3" r="9.6" fill="#8B2020" opacity="0.81" />
-<circle cx="331.9" cy="91.8" r="12.6" fill="#8B2020" opacity="0.67" />
-<circle cx="176.3" cy="274.5" r="6.6" fill="#8B2020" opacity="0.73" />
-<circle cx="222.7" cy="228.7" r="10.1" fill="#8B2020" opacity="0.78" />
-<circle cx="327.1" cy="66.9" r="5.7" fill="#6B3030" opacity="0.80" />
-<circle cx="135.8" cy="166.8" r="5.7" fill="#8B2020" opacity="0.60" />
-<circle cx="195.6" cy="56.4" r="10.5" fill="#8B2020" opacity="0.65" />
-<circle cx="355.8" cy="320.4" r="4.5" fill="#6B3030" opacity="0.59" />
-<circle cx="49.6" cy="77.3" r="5.3" fill="#8B2020" opacity="0.73" />
-<circle cx="106.4" cy="92.3" r="6.4" fill="#6B3030" opacity="0.60" />
-<circle cx="306.6" cy="83.1" r="13.2" fill="#6B3030" opacity="0.90" />
-<circle cx="253.3" cy="76.6" r="10.5" fill="#8B2020" opacity="0.89" />
-<circle cx="222.6" cy="315.5" r="10.7" fill="#6B3030" opacity="0.77" />
-<rect width="400" height="400" fill="url(#hla8_0)"/>
-<rect width="400" height="400" fill="url(#sha8_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,170,156)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Avani Joshi</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-01-18</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Severe</text>
+  <circle cx="132" cy="210" r="5" fill="#AA3232" opacity="0.85" /><circle cx="85" cy="191" r="5" fill="#AA3232" opacity="0.85" /><circle cx="252" cy="243" r="4" fill="#AA3232" opacity="0.85" /><circle cx="234" cy="226" r="6" fill="#AA3232" opacity="0.85" /><circle cx="264" cy="297" r="5" fill="#AA3232" opacity="0.85" /><circle cx="237" cy="167" r="3" fill="#AA3232" opacity="0.85" /><circle cx="153" cy="159" r="7" fill="#AA3232" opacity="0.85" /><circle cx="123" cy="285" r="3" fill="#AA3232" opacity="0.85" /><circle cx="208" cy="233" r="7" fill="#AA3232" opacity="0.85" /><circle cx="153" cy="242" r="3" fill="#AA3232" opacity="0.85" /><circle cx="154" cy="258" r="6" fill="#AA3232" opacity="0.85" /><circle cx="249" cy="239" r="6" fill="#AA3232" opacity="0.85" /><circle cx="130" cy="273" r="6" fill="#AA3232" opacity="0.85" /><circle cx="244" cy="215" r="5" fill="#AA3232" opacity="0.85" /><circle cx="189" cy="193" r="6" fill="#AA3232" opacity="0.85" /><circle cx="201" cy="259" r="7" fill="#AA3232" opacity="0.85" /><circle cx="136" cy="192" r="5" fill="#AA3232" opacity="0.85" /><circle cx="56" cy="215" r="5" fill="#AA3232" opacity="0.85" />
 </svg>

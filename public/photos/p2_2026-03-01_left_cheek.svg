@@ -1,21 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska2_2" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
-  <filter id="fxa2_2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla2_2" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha2_2" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska2_2)" filter="url(#fxa2_2)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.108"/>
-<circle cx="36.1" cy="69.8" r="4.2" fill="#8B2020" opacity="0.73" />
-<circle cx="340.5" cy="363.0" r="8.6" fill="#8B2020" opacity="0.72" />
-<circle cx="58.5" cy="82.0" r="7.5" fill="#8B2020" opacity="0.75" />
-<circle cx="213.0" cy="95.9" r="6.6" fill="#8B2020" opacity="0.90" />
-<circle cx="153.5" cy="275.2" r="5.0" fill="#8B2020" opacity="0.61" />
-<circle cx="110.3" cy="73.6" r="2.1" fill="#8B2020" opacity="0.73" />
-<circle cx="53.7" cy="111.0" r="9.4" fill="#8B2020" opacity="0.85" />
-<circle cx="167.6" cy="240.8" r="2.7" fill="#8B2020" opacity="0.82" />
-<circle cx="290.6" cy="138.6" r="5.0" fill="#6B3030" opacity="0.74" />
-<rect width="400" height="400" fill="url(#hla2_2)"/>
-<rect width="400" height="400" fill="url(#sha2_2)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Aarav Patel</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-01</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="121" cy="207" r="4" fill="#AA3232" opacity="0.85" /><circle cx="176" cy="177" r="7" fill="#AA3232" opacity="0.85" /><circle cx="127" cy="208" r="5" fill="#AA3232" opacity="0.85" /><circle cx="154" cy="181" r="7" fill="#AA3232" opacity="0.85" /><circle cx="51" cy="296" r="7" fill="#AA3232" opacity="0.85" /><circle cx="179" cy="235" r="3" fill="#AA3232" opacity="0.85" /><circle cx="106" cy="167" r="3" fill="#AA3232" opacity="0.85" /><circle cx="157" cy="257" r="6" fill="#AA3232" opacity="0.85" /><circle cx="197" cy="229" r="3" fill="#AA3232" opacity="0.85" /><circle cx="180" cy="296" r="6" fill="#AA3232" opacity="0.85" /><circle cx="264" cy="145" r="5" fill="#AA3232" opacity="0.85" /><circle cx="130" cy="141" r="3" fill="#AA3232" opacity="0.85" />
 </svg>

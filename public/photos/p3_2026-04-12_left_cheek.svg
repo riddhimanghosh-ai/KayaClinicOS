@@ -1,15 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska3_4" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#C8896A"/><stop offset="55%" stop-color="#B5714E"/><stop offset="100%" stop-color="#9B5B35"/></radialGradient>
-  <filter id="fxa3_4"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla3_4" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha3_4" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska3_4)" filter="url(#fxa3_4)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.036"/>
-<circle cx="39.4" cy="266.7" r="6.4" fill="#6B3030" opacity="0.64" />
-<circle cx="324.8" cy="340.9" r="5.1" fill="#6B3030" opacity="0.65" />
-<circle cx="256.2" cy="332.4" r="3.3" fill="#6B3030" opacity="0.79" />
-<rect width="400" height="400" fill="url(#hla3_4)"/>
-<rect width="400" height="400" fill="url(#sha3_4)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,206,192)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Gladston Sequeira</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-04-12</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Mild</text>
+  <circle cx="122" cy="202" r="4" fill="#AA3232" opacity="0.85" /><circle cx="68" cy="206" r="7" fill="#AA3232" opacity="0.85" /><circle cx="89" cy="180" r="7" fill="#AA3232" opacity="0.85" /><circle cx="217" cy="218" r="5" fill="#AA3232" opacity="0.85" /><circle cx="158" cy="284" r="3" fill="#AA3232" opacity="0.85" /><circle cx="90" cy="265" r="3" fill="#AA3232" opacity="0.85" />
 </svg>

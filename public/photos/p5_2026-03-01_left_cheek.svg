@@ -1,23 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska5_2" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
-  <filter id="fxa5_2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla5_2" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha5_2" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska5_2)" filter="url(#fxa5_2)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.108"/>
-<circle cx="44.0" cy="278.3" r="2.6" fill="#8B2020" opacity="0.84" />
-<circle cx="298.9" cy="68.5" r="5.0" fill="#8B2020" opacity="0.75" />
-<circle cx="230.6" cy="166.7" r="6.6" fill="#6B3030" opacity="0.88" />
-<circle cx="247.2" cy="248.2" r="7.4" fill="#6B3030" opacity="0.73" />
-<circle cx="309.1" cy="43.4" r="4.4" fill="#6B3030" opacity="0.79" />
-<circle cx="37.6" cy="37.8" r="8.9" fill="#8B2020" opacity="0.58" />
-<circle cx="40.9" cy="313.0" r="3.6" fill="#6B3030" opacity="0.58" />
-<circle cx="66.5" cy="212.2" r="4.8" fill="#8B2020" opacity="0.83" />
-<circle cx="330.2" cy="359.9" r="4.8" fill="#6B3030" opacity="0.59" />
-<circle cx="147.4" cy="112.1" r="10.5" fill="#6B3030" opacity="0.77" />
-<circle cx="197.8" cy="219.5" r="2.2" fill="#8B2020" opacity="0.82" />
-<rect width="400" height="400" fill="url(#hla5_2)"/>
-<rect width="400" height="400" fill="url(#sha5_2)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Arjun Kapoor</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-01</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="134" cy="176" r="5" fill="#AA3232" opacity="0.85" /><circle cx="111" cy="192" r="4" fill="#AA3232" opacity="0.85" /><circle cx="144" cy="198" r="7" fill="#AA3232" opacity="0.85" /><circle cx="44" cy="291" r="7" fill="#AA3232" opacity="0.85" /><circle cx="211" cy="196" r="6" fill="#AA3232" opacity="0.85" /><circle cx="50" cy="214" r="5" fill="#AA3232" opacity="0.85" /><circle cx="231" cy="266" r="3" fill="#AA3232" opacity="0.85" /><circle cx="187" cy="149" r="3" fill="#AA3232" opacity="0.85" /><circle cx="211" cy="238" r="3" fill="#AA3232" opacity="0.85" /><circle cx="168" cy="147" r="5" fill="#AA3232" opacity="0.85" /><circle cx="234" cy="171" r="4" fill="#AA3232" opacity="0.85" /><circle cx="145" cy="248" r="6" fill="#AA3232" opacity="0.85" />
 </svg>

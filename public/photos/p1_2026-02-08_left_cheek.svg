@@ -1,24 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska1_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxa1_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla1_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha1_1" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska1_1)" filter="url(#fxa1_1)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.144"/>
-<circle cx="33.0" cy="219.9" r="3.4" fill="#8B2020" opacity="0.81" />
-<circle cx="355.2" cy="196.5" r="11.6" fill="#6B3030" opacity="0.81" />
-<circle cx="44.2" cy="226.0" r="10.9" fill="#6B3030" opacity="0.83" />
-<circle cx="121.5" cy="62.9" r="10.3" fill="#8B2020" opacity="0.90" />
-<circle cx="261.7" cy="322.6" r="9.3" fill="#8B2020" opacity="0.58" />
-<circle cx="70.1" cy="221.8" r="7.6" fill="#8B2020" opacity="0.64" />
-<circle cx="41.8" cy="240.5" r="6.5" fill="#8B2020" opacity="0.87" />
-<circle cx="98.8" cy="135.4" r="2.4" fill="#8B2020" opacity="0.69" />
-<circle cx="330.3" cy="84.3" r="9.3" fill="#8B2020" opacity="0.82" />
-<circle cx="248.9" cy="87.3" r="12.0" fill="#6B3030" opacity="0.62" />
-<circle cx="201.6" cy="91.5" r="5.8" fill="#8B2020" opacity="0.72" />
-<circle cx="138.4" cy="87.9" r="9.0" fill="#8B2020" opacity="0.85" />
-<rect width="400" height="400" fill="url(#hla1_1)"/>
-<rect width="400" height="400" fill="url(#sha1_1)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,170,156)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Astha Mundhra</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-02-08</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Severe</text>
+  <circle cx="153" cy="276" r="4" fill="#AA3232" opacity="0.85" /><circle cx="218" cy="287" r="7" fill="#AA3232" opacity="0.85" /><circle cx="182" cy="199" r="7" fill="#AA3232" opacity="0.85" /><circle cx="157" cy="209" r="4" fill="#AA3232" opacity="0.85" /><circle cx="171" cy="197" r="7" fill="#AA3232" opacity="0.85" /><circle cx="174" cy="276" r="3" fill="#AA3232" opacity="0.85" /><circle cx="225" cy="237" r="5" fill="#AA3232" opacity="0.85" /><circle cx="111" cy="286" r="7" fill="#AA3232" opacity="0.85" /><circle cx="197" cy="166" r="6" fill="#AA3232" opacity="0.85" /><circle cx="159" cy="144" r="5" fill="#AA3232" opacity="0.85" /><circle cx="149" cy="203" r="4" fill="#AA3232" opacity="0.85" /><circle cx="262" cy="253" r="6" fill="#AA3232" opacity="0.85" /><circle cx="225" cy="161" r="5" fill="#AA3232" opacity="0.85" /><circle cx="229" cy="195" r="6" fill="#AA3232" opacity="0.85" /><circle cx="148" cy="221" r="5" fill="#AA3232" opacity="0.85" /><circle cx="112" cy="294" r="7" fill="#AA3232" opacity="0.85" /><circle cx="57" cy="194" r="5" fill="#AA3232" opacity="0.85" /><circle cx="270" cy="140" r="6" fill="#AA3232" opacity="0.85" />
 </svg>

@@ -1,26 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska6_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#C8896A"/><stop offset="55%" stop-color="#B5714E"/><stop offset="100%" stop-color="#9B5B35"/></radialGradient>
-  <filter id="fxa6_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla6_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha6_0" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska6_0)" filter="url(#fxa6_0)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.180"/>
-<circle cx="46.0" cy="107.1" r="10.2" fill="#8B2020" opacity="0.76" />
-<circle cx="286.7" cy="121.0" r="4.4" fill="#8B2020" opacity="0.61" />
-<circle cx="34.2" cy="199.4" r="12.3" fill="#8B2020" opacity="0.82" />
-<circle cx="98.4" cy="334.7" r="4.5" fill="#8B2020" opacity="0.57" />
-<circle cx="341.4" cy="246.3" r="13.2" fill="#8B2020" opacity="0.55" />
-<circle cx="224.7" cy="298.4" r="8.7" fill="#8B2020" opacity="0.60" />
-<circle cx="344.5" cy="94.0" r="11.3" fill="#8B2020" opacity="0.72" />
-<circle cx="167.8" cy="312.7" r="8.0" fill="#6B3030" opacity="0.56" />
-<circle cx="109.3" cy="132.6" r="14.5" fill="#6B3030" opacity="0.59" />
-<circle cx="69.2" cy="304.8" r="5.2" fill="#6B3030" opacity="0.71" />
-<circle cx="359.3" cy="162.8" r="10.4" fill="#8B2020" opacity="0.76" />
-<circle cx="44.7" cy="65.5" r="14.2" fill="#6B3030" opacity="0.69" />
-<circle cx="342.3" cy="76.7" r="11.8" fill="#6B3030" opacity="0.85" />
-<circle cx="322.4" cy="324.8" r="7.2" fill="#8B2020" opacity="0.72" />
-<rect width="400" height="400" fill="url(#hla6_0)"/>
-<rect width="400" height="400" fill="url(#sha6_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,170,156)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Aditi Gupta</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-01-18</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Severe</text>
+  <circle cx="211" cy="143" r="3" fill="#AA3232" opacity="0.85" /><circle cx="120" cy="164" r="5" fill="#AA3232" opacity="0.85" /><circle cx="177" cy="147" r="5" fill="#AA3232" opacity="0.85" /><circle cx="122" cy="172" r="7" fill="#AA3232" opacity="0.85" /><circle cx="91" cy="177" r="7" fill="#AA3232" opacity="0.85" /><circle cx="128" cy="243" r="4" fill="#AA3232" opacity="0.85" /><circle cx="103" cy="188" r="7" fill="#AA3232" opacity="0.85" /><circle cx="250" cy="245" r="4" fill="#AA3232" opacity="0.85" /><circle cx="260" cy="231" r="4" fill="#AA3232" opacity="0.85" /><circle cx="83" cy="181" r="3" fill="#AA3232" opacity="0.85" /><circle cx="244" cy="237" r="3" fill="#AA3232" opacity="0.85" /><circle cx="137" cy="256" r="7" fill="#AA3232" opacity="0.85" /><circle cx="225" cy="260" r="3" fill="#AA3232" opacity="0.85" /><circle cx="202" cy="170" r="7" fill="#AA3232" opacity="0.85" /><circle cx="69" cy="290" r="6" fill="#AA3232" opacity="0.85" /><circle cx="68" cy="258" r="6" fill="#AA3232" opacity="0.85" /><circle cx="148" cy="176" r="4" fill="#AA3232" opacity="0.85" /><circle cx="224" cy="268" r="3" fill="#AA3232" opacity="0.85" />
 </svg>

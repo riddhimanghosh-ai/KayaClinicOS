@@ -21,20 +21,25 @@ import type {
 
 export const ROOT = path.resolve(process.cwd());
 const SOURCE_DB = path.join(ROOT, "data", "kaya.db");
-// On Vercel the deployment filesystem is read-only; use /tmp for a writable copy.
+// On Vercel/Amplify the deployment filesystem is read-only; use /tmp for a writable copy.
 const IS_VERCEL = Boolean(process.env.VERCEL);
+const IS_AMPLIFY = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
 const TMP_DB = "/tmp/kaya.db";
-export const DB_PATH = IS_VERCEL ? TMP_DB : SOURCE_DB;
+export const DB_PATH = IS_VERCEL || IS_AMPLIFY ? TMP_DB : SOURCE_DB;
 export const PHOTOS_DIR = path.join(ROOT, "public", "photos");
 
 let _db: Database.Database | null = null;
 
 export function db(): Database.Database {
   if (_db) return _db;
-  if (IS_VERCEL) {
+  if (IS_VERCEL || IS_AMPLIFY) {
     // Cold start: copy the pre-seeded DB from the build artifact to /tmp
     if (!fs.existsSync(TMP_DB) && fs.existsSync(SOURCE_DB)) {
-      fs.copyFileSync(SOURCE_DB, TMP_DB);
+      try {
+        fs.copyFileSync(SOURCE_DB, TMP_DB);
+      } catch (e) {
+        // If copy fails, that's ok - DB will be created fresh
+      }
     }
   } else {
     fs.mkdirSync(path.dirname(SOURCE_DB), { recursive: true });

@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm18_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxm18_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm18_1"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm18_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm18_1)" filter="url(#fxm18_1)"/>
-<g filter="url(#pbm18_1)"><ellipse cx="144" cy="168" rx="59" ry="44" fill="#5A3008" opacity="0.219" transform="rotate(-5,144,168)"/><ellipse cx="197" cy="178" rx="64" ry="25" fill="#5A3008" opacity="0.219" transform="rotate(2,197,178)"/><ellipse cx="157" cy="164" rx="49" ry="30" fill="#5A3008" opacity="0.219" transform="rotate(-14,157,164)"/></g>
-<rect width="400" height="400" fill="url(#hlm18_1)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,206,192)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Meera Pillai</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2025-12-10</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: chin_neck</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Mild</text>
+  <circle cx="120" cy="253" r="6" fill="#AA3232" opacity="0.85" /><circle cx="110" cy="174" r="4" fill="#AA3232" opacity="0.85" /><circle cx="86" cy="175" r="7" fill="#AA3232" opacity="0.85" /><circle cx="183" cy="217" r="4" fill="#AA3232" opacity="0.85" /><circle cx="74" cy="163" r="4" fill="#AA3232" opacity="0.85" /><circle cx="162" cy="163" r="7" fill="#AA3232" opacity="0.85" />
 </svg>

@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm12_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxm12_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm12_1"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm12_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm12_1)" filter="url(#fxm12_1)"/>
-<g filter="url(#pbm12_1)"><ellipse cx="119" cy="310" rx="39" ry="55" fill="#5A3008" opacity="0.262" transform="rotate(-11,119,310)"/><ellipse cx="325" cy="299" rx="36" ry="49" fill="#5A3008" opacity="0.262" transform="rotate(-8,325,299)"/><ellipse cx="150" cy="165" rx="81" ry="37" fill="#5A3008" opacity="0.262" transform="rotate(-0,150,165)"/><ellipse cx="267" cy="81" rx="77" ry="27" fill="#5A3008" opacity="0.262" transform="rotate(15,267,81)"/></g>
-<rect width="400" height="400" fill="url(#hlm12_1)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Gauri Desai</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-10</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: upper_cheek_zygoma</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="215" cy="163" r="3" fill="#AA3232" opacity="0.85" /><circle cx="109" cy="152" r="3" fill="#AA3232" opacity="0.85" /><circle cx="247" cy="258" r="3" fill="#AA3232" opacity="0.85" /><circle cx="274" cy="277" r="6" fill="#AA3232" opacity="0.85" /><circle cx="113" cy="201" r="6" fill="#AA3232" opacity="0.85" /><circle cx="176" cy="260" r="3" fill="#AA3232" opacity="0.85" /><circle cx="115" cy="294" r="4" fill="#AA3232" opacity="0.85" /><circle cx="212" cy="142" r="7" fill="#AA3232" opacity="0.85" /><circle cx="202" cy="207" r="5" fill="#AA3232" opacity="0.85" /><circle cx="235" cy="191" r="3" fill="#AA3232" opacity="0.85" /><circle cx="231" cy="271" r="4" fill="#AA3232" opacity="0.85" /><circle cx="189" cy="243" r="4" fill="#AA3232" opacity="0.85" />
 </svg>

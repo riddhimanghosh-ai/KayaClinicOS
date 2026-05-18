@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm11_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#C8896A"/><stop offset="55%" stop-color="#B5714E"/><stop offset="100%" stop-color="#9B5B35"/></radialGradient>
-  <filter id="fxm11_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm11_0"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm11_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm11_0)" filter="url(#fxm11_0)"/>
-<g filter="url(#pbm11_0)"><ellipse cx="115" cy="286" rx="49" ry="32" fill="#5A3008" opacity="0.350" transform="rotate(11,115,286)"/><ellipse cx="97" cy="325" rx="27" ry="44" fill="#5A3008" opacity="0.350" transform="rotate(-8,97,325)"/><ellipse cx="82" cy="112" rx="43" ry="47" fill="#5A3008" opacity="0.350" transform="rotate(-10,82,112)"/><ellipse cx="175" cy="144" rx="52" ry="23" fill="#5A3008" opacity="0.350" transform="rotate(1,175,144)"/><ellipse cx="250" cy="330" rx="61" ry="48" fill="#5A3008" opacity="0.350" transform="rotate(5,250,330)"/></g>
-<rect width="400" height="400" fill="url(#hlm11_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Esha Bhatt</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-02-17</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: upper_cheek_zygoma</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="194" cy="156" r="6" fill="#AA3232" opacity="0.85" /><circle cx="165" cy="268" r="7" fill="#AA3232" opacity="0.85" /><circle cx="71" cy="287" r="7" fill="#AA3232" opacity="0.85" /><circle cx="112" cy="176" r="6" fill="#AA3232" opacity="0.85" /><circle cx="68" cy="260" r="5" fill="#AA3232" opacity="0.85" /><circle cx="269" cy="162" r="4" fill="#AA3232" opacity="0.85" /><circle cx="61" cy="259" r="7" fill="#AA3232" opacity="0.85" /><circle cx="229" cy="272" r="4" fill="#AA3232" opacity="0.85" /><circle cx="138" cy="231" r="6" fill="#AA3232" opacity="0.85" /><circle cx="220" cy="220" r="7" fill="#AA3232" opacity="0.85" /><circle cx="45" cy="193" r="6" fill="#AA3232" opacity="0.85" /><circle cx="182" cy="156" r="3" fill="#AA3232" opacity="0.85" />
 </svg>

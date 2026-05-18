@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm14_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#C8896A"/><stop offset="55%" stop-color="#B5714E"/><stop offset="100%" stop-color="#9B5B35"/></radialGradient>
-  <filter id="fxm14_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm14_0"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm14_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm14_0)" filter="url(#fxm14_0)"/>
-<g filter="url(#pbm14_0)"><ellipse cx="127" cy="85" rx="96" ry="26" fill="#5A3008" opacity="0.350" transform="rotate(-1,127,85)"/><ellipse cx="293" cy="135" rx="41" ry="31" fill="#5A3008" opacity="0.350" transform="rotate(-3,293,135)"/><ellipse cx="85" cy="241" rx="27" ry="16" fill="#5A3008" opacity="0.350" transform="rotate(13,85,241)"/><ellipse cx="227" cy="118" rx="66" ry="50" fill="#5A3008" opacity="0.350" transform="rotate(2,227,118)"/><ellipse cx="228" cy="235" rx="51" ry="27" fill="#5A3008" opacity="0.350" transform="rotate(5,228,235)"/></g>
-<rect width="400" height="400" fill="url(#hlm14_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,188,174)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Jhanvi Malhotra</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-02-17</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: upper_cheek_zygoma</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Moderate</text>
+  <circle cx="170" cy="276" r="3" fill="#AA3232" opacity="0.85" /><circle cx="176" cy="252" r="5" fill="#AA3232" opacity="0.85" /><circle cx="44" cy="211" r="6" fill="#AA3232" opacity="0.85" /><circle cx="192" cy="201" r="5" fill="#AA3232" opacity="0.85" /><circle cx="168" cy="186" r="7" fill="#AA3232" opacity="0.85" /><circle cx="219" cy="249" r="5" fill="#AA3232" opacity="0.85" /><circle cx="83" cy="211" r="6" fill="#AA3232" opacity="0.85" /><circle cx="155" cy="296" r="5" fill="#AA3232" opacity="0.85" /><circle cx="113" cy="213" r="3" fill="#AA3232" opacity="0.85" /><circle cx="195" cy="253" r="7" fill="#AA3232" opacity="0.85" /><circle cx="119" cy="279" r="4" fill="#AA3232" opacity="0.85" /><circle cx="207" cy="176" r="5" fill="#AA3232" opacity="0.85" />
 </svg>

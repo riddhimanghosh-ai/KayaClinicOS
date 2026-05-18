@@ -1,27 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska7_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxa7_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla7_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha7_0" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska7_0)" filter="url(#fxa7_0)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.180"/>
-<circle cx="48.6" cy="289.9" r="5.1" fill="#8B2020" opacity="0.68" />
-<circle cx="272.9" cy="136.2" r="2.7" fill="#6B3030" opacity="0.85" />
-<circle cx="204.9" cy="341.0" r="11.8" fill="#6B3030" opacity="0.63" />
-<circle cx="336.5" cy="45.5" r="13.5" fill="#8B2020" opacity="0.86" />
-<circle cx="166.6" cy="169.1" r="12.9" fill="#6B3030" opacity="0.61" />
-<circle cx="200.5" cy="286.4" r="7.6" fill="#8B2020" opacity="0.67" />
-<circle cx="113.6" cy="161.3" r="4.2" fill="#6B3030" opacity="0.75" />
-<circle cx="247.5" cy="189.8" r="13.4" fill="#6B3030" opacity="0.68" />
-<circle cx="122.5" cy="319.7" r="10.1" fill="#8B2020" opacity="0.77" />
-<circle cx="302.4" cy="180.6" r="14.3" fill="#8B2020" opacity="0.86" />
-<circle cx="187.6" cy="71.6" r="7.5" fill="#8B2020" opacity="0.85" />
-<circle cx="217.1" cy="241.4" r="9.7" fill="#8B2020" opacity="0.88" />
-<circle cx="224.4" cy="254.5" r="2.6" fill="#6B3030" opacity="0.72" />
-<circle cx="314.5" cy="33.9" r="3.7" fill="#8B2020" opacity="0.64" />
-<circle cx="352.9" cy="368.3" r="9.4" fill="#8B2020" opacity="0.63" />
-<rect width="400" height="400" fill="url(#hla7_0)"/>
-<rect width="400" height="400" fill="url(#sha7_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,170,156)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Akash Singh</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-01-18</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Severe</text>
+  <circle cx="207" cy="169" r="6" fill="#AA3232" opacity="0.85" /><circle cx="263" cy="162" r="5" fill="#AA3232" opacity="0.85" /><circle cx="75" cy="288" r="7" fill="#AA3232" opacity="0.85" /><circle cx="57" cy="186" r="6" fill="#AA3232" opacity="0.85" /><circle cx="190" cy="150" r="6" fill="#AA3232" opacity="0.85" /><circle cx="245" cy="155" r="4" fill="#AA3232" opacity="0.85" /><circle cx="62" cy="155" r="7" fill="#AA3232" opacity="0.85" /><circle cx="111" cy="295" r="5" fill="#AA3232" opacity="0.85" /><circle cx="160" cy="186" r="4" fill="#AA3232" opacity="0.85" /><circle cx="202" cy="222" r="3" fill="#AA3232" opacity="0.85" /><circle cx="123" cy="191" r="5" fill="#AA3232" opacity="0.85" /><circle cx="270" cy="258" r="3" fill="#AA3232" opacity="0.85" /><circle cx="194" cy="156" r="5" fill="#AA3232" opacity="0.85" /><circle cx="133" cy="260" r="5" fill="#AA3232" opacity="0.85" /><circle cx="180" cy="185" r="3" fill="#AA3232" opacity="0.85" /><circle cx="270" cy="206" r="5" fill="#AA3232" opacity="0.85" /><circle cx="274" cy="221" r="7" fill="#AA3232" opacity="0.85" /><circle cx="124" cy="277" r="3" fill="#AA3232" opacity="0.85" />
 </svg>

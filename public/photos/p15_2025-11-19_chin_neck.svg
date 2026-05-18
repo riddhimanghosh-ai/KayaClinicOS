@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="skm15_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
-  <filter id="fxm15_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <filter id="pbm15_0"><feGaussianBlur stdDeviation="10"/></filter>
-  <radialGradient id="hlm15_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#skm15_0)" filter="url(#fxm15_0)"/>
-<g filter="url(#pbm15_0)"><ellipse cx="131" cy="105" rx="37" ry="43" fill="#5A3008" opacity="0.350" transform="rotate(-14,131,105)"/><ellipse cx="272" cy="158" rx="96" ry="64" fill="#5A3008" opacity="0.350" transform="rotate(9,272,158)"/><ellipse cx="86" cy="198" rx="97" ry="24" fill="#5A3008" opacity="0.350" transform="rotate(10,86,198)"/><ellipse cx="72" cy="195" rx="96" ry="41" fill="#5A3008" opacity="0.350" transform="rotate(-7,72,195)"/><ellipse cx="221" cy="117" rx="47" ry="20" fill="#5A3008" opacity="0.350" transform="rotate(-15,221,117)"/></g>
-<rect width="400" height="400" fill="url(#hlm15_0)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,206,192)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Kavya Chopra</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2025-11-19</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: chin_neck</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Mild</text>
+  <circle cx="199" cy="143" r="4" fill="#AA3232" opacity="0.85" /><circle cx="87" cy="240" r="6" fill="#AA3232" opacity="0.85" /><circle cx="118" cy="174" r="7" fill="#AA3232" opacity="0.85" /><circle cx="178" cy="298" r="4" fill="#AA3232" opacity="0.85" /><circle cx="277" cy="224" r="5" fill="#AA3232" opacity="0.85" /><circle cx="190" cy="172" r="5" fill="#AA3232" opacity="0.85" />
 </svg>

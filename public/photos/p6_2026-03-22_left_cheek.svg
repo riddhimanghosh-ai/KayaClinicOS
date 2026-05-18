@@ -1,17 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-<defs>
-  <radialGradient id="ska6_3" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#C8896A"/><stop offset="55%" stop-color="#B5714E"/><stop offset="100%" stop-color="#9B5B35"/></radialGradient>
-  <filter id="fxa6_3"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
-  <radialGradient id="hla6_3" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
-  <radialGradient id="sha6_3" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="400" height="400" fill="url(#ska6_3)" filter="url(#fxa6_3)"/>
-<rect width="400" height="400" fill="#CC3030" opacity="0.072"/>
-<circle cx="47.1" cy="128.2" r="3.3" fill="#6B3030" opacity="0.75" />
-<circle cx="284.1" cy="235.0" r="3.4" fill="#8B2020" opacity="0.66" />
-<circle cx="244.8" cy="362.6" r="4.2" fill="#6B3030" opacity="0.81" />
-<circle cx="338.7" cy="281.2" r="4.5" fill="#6B3030" opacity="0.73" />
-<circle cx="200.9" cy="336.0" r="8.5" fill="#6B3030" opacity="0.82" />
-<rect width="400" height="400" fill="url(#hla6_3)"/>
-<rect width="400" height="400" fill="url(#sha6_3)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <rect width="320" height="320" fill="rgb(255,206,192)" />
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Aditi Gupta</text>
+  <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-22</text>
+  <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
+  <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Mild</text>
+  <circle cx="93" cy="180" r="6" fill="#AA3232" opacity="0.85" /><circle cx="129" cy="201" r="3" fill="#AA3232" opacity="0.85" /><circle cx="45" cy="291" r="7" fill="#AA3232" opacity="0.85" /><circle cx="276" cy="265" r="7" fill="#AA3232" opacity="0.85" /><circle cx="47" cy="261" r="3" fill="#AA3232" opacity="0.85" /><circle cx="60" cy="224" r="3" fill="#AA3232" opacity="0.85" />
 </svg>
