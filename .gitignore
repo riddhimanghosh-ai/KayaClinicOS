@@ -6,6 +6,7 @@ out
 .env.local
 *.log
 .turbo
-# SQLite WAL shim files (not the DB itself — committed for Vercel cold-start)
+# SQLite database and WAL files
+data/*.db
 data/*.db-shm
 data/*.db-wal
