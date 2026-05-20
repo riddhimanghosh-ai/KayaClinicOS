@@ -562,6 +562,7 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
           const fd = new FormData();
           fd.append("audio", blob, "recording.webm");
           const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+          if (!res.ok) throw new Error(`Server error: ${res.status}`);
           const data = await res.json();
           if (data.error) throw new Error(data.error);
           if (data.transcript) setNote(n => n + (n ? " " : "") + data.transcript);
