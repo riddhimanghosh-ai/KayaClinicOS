@@ -419,10 +419,10 @@ function DetailDrawer({
                   <span className="text-sm font-medium">{appt.appointment_ts.slice(11, 16)}</span>
                   <span className="text-xs text-muted-foreground">· {dur} min</span>
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="ghost"
                     onClick={() => setModifyMode(true)}
-                    className="ml-1 h-6 px-2 text-xs"
+                    className="ml-1"
                   >
                     ✏️ Modify
                   </Button>
