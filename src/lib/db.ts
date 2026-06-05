@@ -630,13 +630,18 @@ export function initSchema(handle?: Database.Database): void {
 
 export function resetSchema(): void {
   if (_db) {
+    try { _db.pragma("wal_checkpoint(TRUNCATE)"); } catch {}
     _db.close();
     _db = null;
   }
-  if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
+  // Remove DB file and any leftover WAL / SHM files to avoid SQLITE_IOERR_SHORT_READ
+  for (const suffix of ["", "-wal", "-shm"]) {
+    const p = DB_PATH + suffix;
+    if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} }
+  }
   if (fs.existsSync(PHOTOS_DIR)) {
     for (const f of fs.readdirSync(PHOTOS_DIR)) {
-      fs.unlinkSync(path.join(PHOTOS_DIR, f));
+      try { fs.unlinkSync(path.join(PHOTOS_DIR, f)); } catch {}
     }
   }
   initSchema();

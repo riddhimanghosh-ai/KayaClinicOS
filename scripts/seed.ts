@@ -141,23 +141,23 @@ function archetype(idx: number): "alpha" | "beta" | "gap" | "normal" {
 
 function insertReference() {
   const d = db();
-  const insBranch = d.prepare("INSERT INTO branches (id, name, city) VALUES (?, ?, ?)");
+  const insBranch = d.prepare("INSERT OR REPLACE INTO branches (id, name, city) VALUES (?, ?, ?)");
   BRANCHES.forEach((b) => insBranch.run(b.id, b.name, b.city));
 
   const insDoctor = d.prepare(
-    "INSERT INTO doctors (id, name, specialty, home_branch_id) VALUES (?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO doctors (id, name, specialty, home_branch_id) VALUES (?, ?, ?, ?)"
   );
   DOCTORS.forEach((doc) => insDoctor.run(doc.id, doc.name, doc.specialty, doc.home_branch_id));
 
   const insSvc = d.prepare(
-    "INSERT INTO services_catalog (id, name, category, price_inr, periodic_days, description, item_code, is_new_launch, discount_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO services_catalog (id, name, category, price_inr, periodic_days, description, item_code, is_new_launch, discount_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
   SERVICES.forEach((s) =>
     insSvc.run(s.id, s.name, s.category, s.price_inr, s.periodic_days, s.description, s.item_code, s.is_new_launch, s.discount_pct)
   );
 
   const insProd = d.prepare(
-    "INSERT INTO products_catalog (id, sku, name, category, price_inr, description, item_code, is_new_launch, discount_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO products_catalog (id, sku, name, category, price_inr, description, item_code, is_new_launch, discount_pct) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
   PRODUCTS.forEach((p) =>
     insProd.run(p.id, p.sku, p.name, p.category, p.price_inr, p.description, p.item_code, p.is_new_launch, p.discount_pct)
