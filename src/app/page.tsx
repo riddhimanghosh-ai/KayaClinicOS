@@ -430,47 +430,6 @@ export default function SuperAdminHome() {
         </Card>
       </section>
 
-      {/* ── System health ── */}
-      <section>
-        <SectionHeading>System health</SectionHeading>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className={["rounded-lg border px-4 py-3 space-y-1", llm.live ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"].join(" ")}>
-                <div className="flex items-center gap-2">
-                  <Brain className={`h-4 w-4 ${llm.live ? "text-emerald-600" : "text-amber-600"}`} />
-                  <span className="text-xs font-semibold">AI Engine</span>
-                  <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full ${llm.live ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {llm.live ? "Live" : "Mock"}
-                  </span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">{llm.provider} · {llm.mode}</div>
-                {!llm.live && <div className="text-[10px] text-amber-600">Set API key to enable AI features</div>}
-              </div>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs font-semibold">Database</span>
-                  <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Healthy</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">SQLite · {patients.length} patients · {branchStats.length} branches</div>
-              </div>
-              <div className="rounded-lg border border-border bg-secondary/30 px-4 py-3 space-y-2">
-                <div className="text-xs font-semibold mb-1">Portals</div>
-                {[
-                  { label: "Manager Console", href: "/manager" },
-                  { label: "Doctor Console",  href: "/doctor" },
-                  { label: "Customer App",    href: "/customer/login" },
-                ].map(p => (
-                  <Link key={p.href} href={p.href} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                    <ChevronRight className="h-3 w-3" />{p.label} →
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
     </div>
   );
 }

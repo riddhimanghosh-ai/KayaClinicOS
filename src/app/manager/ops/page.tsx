@@ -5,12 +5,12 @@ import { OpsClient } from "./ops-client";
 export const dynamic = "force-dynamic";
 
 export default function OpsPage() {
-  const rows = getTreatmentOps(30);
+  const rows = getTreatmentOps(1);
   return (
     <div className="space-y-6">
       <PageHeader
         title="Treatment & FnO Operations"
-        subtitle="Pending data entry for treatment sessions and inventory records — last 30 days"
+        subtitle="Today's sessions — pending treatment entry and inventory records"
       />
       <OpsClient rows={rows} />
     </div>
