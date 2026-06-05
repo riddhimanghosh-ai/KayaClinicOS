@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2, Pencil, Tag,
+  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2, Pencil, Tag, ChevronDown, X,
 } from "lucide-react";
 import { inr } from "@/lib/utils";
 
@@ -71,6 +71,8 @@ export function CheckoutFlow({
   const [rxLoading, setRxLoading] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selected, setSelected] = useState<boolean[]>([]);
+  const [discountOpen, setDiscountOpen] = useState<boolean[]>([]);
+  const [editingPrice, setEditingPrice] = useState<boolean[]>([]);
   const [otp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [otpConfirmed, setOtpConfirmed] = useState(false);
   const [receiptData, setReceiptData] = useState<{ items: ReceiptItem[]; total: number; type: string } | null>(null);
@@ -118,11 +120,16 @@ export function CheckoutFlow({
 
       setLineItems(items);
       setSelected(items.map(() => true));
+      setDiscountOpen(items.map(() => false));
+      setEditingPrice(items.map(() => false));
     } catch (e) {
       console.error(e);
       // Even on error, show the service type as a fallback item
-      setLineItems([{ id: 0, product: serviceType, product_detail: "Appointment service fee", basePrice: 0, discountPct: 0, priceOverride: false }]);
+      const fallback = [{ id: 0, product: serviceType, product_detail: "Appointment service fee", basePrice: 0, discountPct: 0, priceOverride: false }];
+      setLineItems(fallback);
       setSelected([true]);
+      setDiscountOpen([false]);
+      setEditingPrice([false]);
     }
     setRxLoading(false);
   };
@@ -181,86 +188,140 @@ export function CheckoutFlow({
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">Select &amp; price items</span>
+          <span className="text-sm font-semibold">Prescription items</span>
           <button onClick={() => setPhase("choose")} className="text-xs text-muted-foreground underline hover:text-foreground">← Back</button>
         </div>
 
         <div className="space-y-2">
-          {lineItems.map((it, i) => (
-            <div
-              key={it.id}
-              className={[
-                "rounded-lg border px-3 py-2.5 transition-colors",
-                selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-60",
-              ].join(" ")}
-            >
-              {/* Row 1: checkbox + name + detail */}
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selected[i]}
-                  onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))}
-                  className="h-4 w-4 rounded accent-emerald-600 mt-0.5 shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold leading-tight">{it.product}</div>
-                  {it.product_detail && (
-                    <div className="text-xs text-muted-foreground mt-0.5">{it.product_detail}</div>
-                  )}
+          {lineItems.map((it, i) => {
+            const final = lineTotal(it);
+            const hasDiscount = it.discountPct > 0;
+            return (
+              <div
+                key={it.id}
+                className={[
+                  "rounded-xl border transition-colors",
+                  selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-55",
+                ].join(" ")}
+              >
+                {/* Main row */}
+                <div className="flex items-start gap-3 px-3 pt-3 pb-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected[i]}
+                    onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))}
+                    className="h-4 w-4 rounded accent-emerald-600 mt-1 shrink-0 cursor-pointer"
+                  />
+                  {/* Name + detail */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold leading-tight">{it.product}</div>
+                    {it.product_detail && (
+                      <div className="text-xs text-muted-foreground mt-0.5">{it.product_detail}</div>
+                    )}
+                  </div>
+                  {/* Price badge */}
+                  <div className="shrink-0 text-right">
+                    {hasDiscount ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs line-through text-muted-foreground tabular-nums">{inr(it.basePrice)}</span>
+                        <span className="text-base font-bold text-emerald-700 tabular-nums leading-tight">{inr(final)}</span>
+                      </div>
+                    ) : (
+                      <span className={`text-base font-bold tabular-nums ${it.basePrice === 0 ? "text-amber-500" : "text-emerald-700"}`}>
+                        {it.basePrice === 0 ? "₹—" : inr(final)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm font-bold tabular-nums text-emerald-700 shrink-0">
-                  {inr(lineTotal(it))}
-                </div>
-              </label>
 
-              {/* Row 2: price + discount editors (only when selected) */}
-              {selected[i] && (
-                <div className="mt-2 ml-7 flex items-center gap-2 flex-wrap">
-                  {/* Base price */}
-                  <div className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1">
-                    <Pencil className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <span className="text-[11px] text-muted-foreground">₹</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={it.basePrice}
-                      onChange={e => updateItem(it.id, { basePrice: Number(e.target.value) || 0, priceOverride: true })}
-                      className="w-20 text-xs font-semibold text-right focus:outline-none bg-transparent tabular-nums"
-                    />
+                {/* Action row — only when selected */}
+                {selected[i] && (
+                  <div className="flex items-center gap-2 px-3 pb-2.5 border-t border-emerald-200/60 pt-2 flex-wrap">
+                    {/* Edit price toggle */}
+                    {editingPrice[i] ? (
+                      <div className="flex items-center gap-1 rounded-lg border border-border bg-white px-2 py-1">
+                        <span className="text-[11px] text-muted-foreground">₹</span>
+                        <input
+                          type="number"
+                          min={0}
+                          autoFocus
+                          value={it.basePrice === 0 ? "" : it.basePrice}
+                          placeholder="0"
+                          onChange={e => updateItem(it.id, { basePrice: Number(e.target.value) || 0, priceOverride: true })}
+                          onBlur={() => setEditingPrice(p => p.map((v, j) => j === i ? false : v))}
+                          className="w-20 text-xs font-semibold text-right focus:outline-none bg-transparent tabular-nums"
+                        />
+                        <button
+                          onClick={() => setEditingPrice(p => p.map((v, j) => j === i ? false : v))}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setEditingPrice(p => p.map((v, j) => j === i ? true : v))}
+                        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-lg px-2 py-1 bg-white hover:bg-secondary transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        {it.basePrice === 0 ? "Enter price" : "Edit price"}
+                      </button>
+                    )}
+
+                    {/* Apply discount toggle */}
+                    {!discountOpen[i] ? (
+                      <button
+                        onClick={() => setDiscountOpen(p => p.map((v, j) => j === i ? true : v))}
+                        className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 border border-primary/30 rounded-lg px-2 py-1 bg-white hover:bg-primary/5 transition-colors font-medium"
+                      >
+                        <Tag className="h-3 w-3" />
+                        Apply discount offer
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-white px-2 py-1">
+                        <Tag className="h-3 w-3 text-primary shrink-0" />
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          autoFocus
+                          value={it.discountPct || ""}
+                          placeholder="0"
+                          onChange={e => updateItem(it.id, { discountPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
+                          className="w-8 text-xs font-bold text-center focus:outline-none bg-transparent tabular-nums text-primary"
+                        />
+                        <span className="text-[11px] text-muted-foreground">% off</span>
+                        {it.discountPct > 0 && (
+                          <span className="text-[10px] text-emerald-600 font-semibold">→ {inr(final)}</span>
+                        )}
+                        <button
+                          onClick={() => { updateItem(it.id, { discountPct: 0 }); setDiscountOpen(p => p.map((v, j) => j === i ? false : v)); }}
+                          className="text-muted-foreground hover:text-foreground ml-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {it.basePrice === 0 && !editingPrice[i] && (
+                      <span className="text-[11px] text-amber-600 font-medium ml-auto">⚠ Enter price to collect</span>
+                    )}
                   </div>
-                  {/* Discount */}
-                  <div className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1">
-                    <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={it.discountPct}
-                      onChange={e => updateItem(it.id, { discountPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
-                      className="w-10 text-xs font-semibold text-right focus:outline-none bg-transparent tabular-nums"
-                    />
-                    <span className="text-[11px] text-muted-foreground">% off</span>
-                  </div>
-                  {/* Computed final */}
-                  {it.discountPct > 0 && (
-                    <div className="flex items-center gap-1 text-xs">
-                      <span className="line-through text-muted-foreground tabular-nums">{inr(it.basePrice)}</span>
-                      <span className="text-emerald-700 font-semibold tabular-nums">{inr(lineTotal(it))}</span>
-                    </div>
-                  )}
-                  {it.basePrice === 0 && (
-                    <span className="text-[11px] text-amber-600 font-medium">⚠ Enter price</span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="flex items-center justify-between pt-1 border-t border-border">
           <div className="text-sm">
-            <span className="text-muted-foreground">{selectedItems.length} items · </span>
+            <span className="text-muted-foreground">{selectedItems.length} item{selectedItems.length !== 1 ? "s" : ""} · </span>
             <span className="font-bold text-base">{inr(total)}</span>
+            {selectedItems.some(it => it.discountPct > 0) && (
+              <span className="ml-1.5 text-xs text-emerald-600 font-medium">
+                (discount applied)
+              </span>
+            )}
           </div>
           <button
             onClick={() => collectAndReceipt("products")}
@@ -271,7 +332,7 @@ export function CheckoutFlow({
           </button>
         </div>
         {selectedItems.some(it => it.basePrice === 0) && (
-          <p className="text-xs text-amber-600 text-right">⚠ Some items have ₹0 price — update before collecting.</p>
+          <p className="text-xs text-amber-600 text-right">⚠ Some items need a price — tap "Enter price" above.</p>
         )}
       </div>
     );

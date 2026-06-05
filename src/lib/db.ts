@@ -505,6 +505,33 @@ export function initSchema(handle?: Database.Database): void {
     // fallback: any branch without a zone
     d.prepare("UPDATE branches SET zone_name = 'Zone ' || id, zone_manager_name = 'Zone Manager' WHERE zone_name IS NULL OR zone_name = ''").run();
   } catch {}
+
+  // Seed prescription-matched products into catalog so checkout can auto-fill prices.
+  // Safe to run multiple times — INSERT OR IGNORE on unique SKU.
+  try {
+    const ins = d.prepare(`
+      INSERT OR IGNORE INTO products_catalog (sku, name, category, price_inr, description)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    const rxProducts: [string, string, string, number, string][] = [
+      ["RX-MINOXIDIL-5",   "Minoxidil 5% Solution",                         "Hair Care",     850,  "Topical minoxidil for androgenic alopecia · 60 ml"],
+      ["RX-MINOXIDIL-5H",  "मिनॉक्सिडेल (Minoxidil 5%)",                    "Hair Care",     850,  "Topical minoxidil for androgenic alopecia · 60 ml"],
+      ["RX-HAIR-SERUM",    "Anti Hair-Fall Serum",                           "Hair Care",    1800,  "Scalp strengthening serum · 50 ml"],
+      ["RX-GLUTA-SERUM",   "Gluta Glow Face Serum",                          "Brightening",  2200,  "Glutathione brightening serum · 30 ml"],
+      ["RX-HYPER-SERUM",   "Hyperpigmentation Reducing Face Serum",          "Pigmentation", 2600,  "Targeted hyperpigmentation corrector · 30 ml"],
+      ["RX-GLUTA-NUTRA",   "Kaya NUTRA+ Glutathione Mouth Melt Powder",      "Supplements",  1500,  "Oral glutathione · 30 sachets"],
+      ["RX-BRIGHT-CREAM",  "Kaya Brightening Night Cream",                   "Brightening",  1950,  "Brightening night cream · 50 ml"],
+      ["RX-BIOTIN",        "Biotin Tablets",                                  "Supplements",   650,  "Hair & nail supplement · 30 tablets"],
+      ["RX-SLS-SHAMPOO",   "Sulfate-Free Gentle Shampoo",                    "Hair Care",     750,  "Gentle scalp-safe shampoo · 200 ml"],
+      ["RX-SPF50",         "SPF 50 PA+++ Sunscreen",                         "Sun Care",      950,  "Daily broad-spectrum sunscreen · 50 ml"],
+      ["RX-SALICYLIC",     "Salicylic Acid Face Wash 2%",                    "Acne",          750,  "BHA cleanser for acne · 100 ml"],
+      ["RX-BENZ-PEROX",   "Benzoyl Peroxide Gel 2.5%",                      "Acne",          480,  "Topical antibacterial for acne · 30 g"],
+      ["RX-TRETINOIN",     "Tretinoin Cream 0.025%",                         "Anti-Ageing",   980,  "Retinoid cream for renewal · 20 g"],
+      ["RX-AZ-GEL",        "Azelaic Acid Gel 15%",                           "Pigmentation", 1200,  "Dual-action pigmentation & acne gel · 30 g"],
+      ["RX-BARRIER",       "Ceramide Barrier Repair Cream",                  "Barrier",       950,  "Intensive barrier repair · 50 ml"],
+    ];
+    for (const row of rxProducts) ins.run(...row);
+  } catch {}
 }
 
 export function resetSchema(): void {
@@ -667,22 +694,43 @@ function normalizeRxItems(itemsJson: string): any[] {
 export function lookupCatalogPrice(name: string): number | null {
   if (!name || !name.trim()) return null;
   const d = db();
-  const q = name.trim().toLowerCase();
-  const product = d
-    .prepare(`SELECT price_inr FROM products_catalog WHERE lower(name) = ? LIMIT 1`)
-    .get(q) as any;
-  if (product) return product.price_inr;
-  const service = d
-    .prepare(`SELECT price_inr FROM services_catalog WHERE lower(name) = ? LIMIT 1`)
-    .get(q) as any;
-  if (service) return service.price_inr;
-  // Fuzzy: catalog name contained in the spoken product name or vice versa.
-  const pLike = d
-    .prepare(
-      `SELECT price_inr FROM products_catalog WHERE ? LIKE '%' || lower(name) || '%' OR lower(name) LIKE '%' || ? || '%' LIMIT 1`
-    )
-    .get(q, q) as any;
-  if (pLike) return pLike.price_inr;
+  // Strip non-ASCII characters (Hindi script etc.) and normalize
+  const ascii = name.replace(/[^\x00-\x7F]/g, " ").trim();
+  const q = ascii.toLowerCase();
+
+  // 1. Exact match on either name form
+  for (const nm of [name.trim().toLowerCase(), q]) {
+    const r = d.prepare(`SELECT price_inr FROM products_catalog WHERE lower(name) = ? LIMIT 1`).get(nm) as any;
+    if (r) return r.price_inr;
+    const s = d.prepare(`SELECT price_inr FROM services_catalog WHERE lower(name) = ? LIMIT 1`).get(nm) as any;
+    if (s) return s.price_inr;
+  }
+
+  // 2. Substring match — catalog name ⊂ query OR query ⊂ catalog name
+  const pSub = d.prepare(
+    `SELECT price_inr FROM products_catalog WHERE ? LIKE '%' || lower(name) || '%' OR lower(name) LIKE '%' || ? || '%' LIMIT 1`
+  ).get(q, q) as any;
+  if (pSub) return pSub.price_inr;
+  const sSub = d.prepare(
+    `SELECT price_inr FROM services_catalog WHERE ? LIKE '%' || lower(name) || '%' OR lower(name) LIKE '%' || ? || '%' LIMIT 1`
+  ).get(q, q) as any;
+  if (sSub) return sSub.price_inr;
+
+  // 3. Keyword token overlap — split query into significant words, score catalog entries
+  const STOP = new Set(["the","a","an","for","to","of","and","with","in","on","ml","g","mg",
+    "tablet","tablets","capsule","capsules","solution","cream","gel","serum","powder","drops"]);
+  const tokens = q.split(/[\s\-\(\)\/\·\.]+/).filter(t => t.length > 3 && !STOP.has(t));
+  if (tokens.length > 0) {
+    const allProds = d.prepare("SELECT name, price_inr FROM products_catalog").all() as { name: string; price_inr: number }[];
+    let bestScore = 0, bestPrice: number | null = null;
+    for (const row of allProds) {
+      const rowLow = row.name.toLowerCase();
+      const score = tokens.filter(t => rowLow.includes(t)).length;
+      if (score > 0 && score > bestScore) { bestScore = score; bestPrice = row.price_inr; }
+    }
+    if (bestPrice != null) return bestPrice;
+  }
+
   return null;
 }
 
