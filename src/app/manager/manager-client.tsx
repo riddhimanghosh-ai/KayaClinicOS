@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import {
   Loader2, Search, Sparkles, Wand2,
   BarChart3, MessageSquare, Clock,
-  AlertCircle, UserX, ChevronDown, ChevronUp, BookmarkCheck, Trash2
+  AlertCircle, UserX, ChevronDown, ChevronUp, BookmarkCheck, Trash2,
+  Send, Edit3, Calendar, Phone,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Textarea } from "@/components/ui/textarea";
+import type { QueuedMessage } from "@/lib/messaging";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -25,6 +27,29 @@ type CohortBundle = {
   rows: CohortRow[];
 };
 
+const COHORT_EXAMPLES: Record<string, { who: string; scenario: string }> = {
+  alpha: {
+    who: "Priya S., 28 F · Bandra Branch",
+    scenario:
+      "Completed her 6-session Acne Peel course 3 weeks ago. Doctor tagged: acne resolved, skin barrier intact, scar treatment candidate. Next step: Microneedling for Scars — 20% off offer to close the upsell.",
+  },
+  beta: {
+    who: "Anjali M., 35 F · CP Branch",
+    scenario:
+      "Bought Pigmentation Brightening serum 2 months ago. Doctor tagged: deep dermal melasma, ready for Q-Switch Laser Toning. Offer: laser session package at 15% off.",
+  },
+  missed: {
+    who: "Sonal P., 26 F · Bandra Branch",
+    scenario:
+      "6-session Acne Treatment package — 4 used, 2 remaining. Last session was 22 days ago; ideal frequency is every 2–3 weeks. Reach out to rebook before momentum is lost.",
+  },
+  followup: {
+    who: "Raj M., 38 M · CP Branch",
+    scenario:
+      "Had Q-Switch Laser Toning 5 days ago. Send a check-in: how is the skin responding? Any redness or irritation? Book next session while treatment is fresh in mind.",
+  },
+};
+
 export function ManagerClient({
   cohorts,
   initialPending,
@@ -41,8 +66,23 @@ export function ManagerClient({
   initialPending: PendingSessionRow[];
   initialSavedCohorts: SavedCohort[];
 }) {
-  const router = useRouter();
   const [tab, setTab] = useState("alpha");
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [queueSummary, setQueueSummary] = useState({ queued: 0, sent: 0 });
+  const [queueLoading, setQueueLoading] = useState(false);
+
+  const openWhatsAppQueue = async () => {
+    setTab("whatsapp");
+    setQueueLoading(true);
+    try {
+      const res = await fetch("/api/messages/queue", { cache: "no-store" });
+      const data = await res.json();
+      setQueuedMessages(data.messages ?? []);
+      setQueueSummary(data.summary ?? { queued: 0, sent: 0 });
+    } finally {
+      setQueueLoading(false);
+    }
+  };
   const [pending, setPending] = useState<PendingSessionRow[]>(initialPending);
   const [showBuilder, setShowBuilder] = useState(false);
   const [customRows, setCustomRows] = useState<CohortRow[]>([]);
@@ -61,13 +101,36 @@ export function ManagerClient({
 
   // Dynamic cohort state
   const [gapRows, setGapRows] = useState<CohortRow[]>(cohorts.gap.rows);
-  const [gapDays, setGapDays] = useState(180);
+  const [gapDays, setGapDays] = useState(60);
   const [inactiveRows, setInactiveRows] = useState<CohortRow[]>(cohorts.inactive.rows);
   const [inactiveDays, setInactiveDays] = useState(90);
 
   return (
     <div className="space-y-4">
-      <Tabs value={tab} onValueChange={setTab}>
+      {/* WhatsApp Queue — floating action button above tabs */}
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Cohort Engine</div>
+        <button
+          onClick={openWhatsAppQueue}
+          className={[
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors shadow-sm",
+            tab === "whatsapp"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700",
+          ].join(" ")}
+        >
+          <MessageSquare className="h-4 w-4" />
+          WhatsApp Queue
+          {queueSummary.queued > 0 && (
+            <span className={[
+              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+              tab === "whatsapp" ? "bg-white text-primary" : "bg-primary text-white",
+            ].join(" ")}>{queueSummary.queued}</span>
+          )}
+        </button>
+      </div>
+
+      <Tabs value={tab} onValueChange={v => { if (v === "whatsapp") openWhatsAppQueue(); else setTab(v); }}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="alpha" className="gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />Scar Upsell
@@ -110,24 +173,24 @@ export function ManagerClient({
         </TabsList>
 
         <TabsContent value="alpha">
-          <CohortPane bundle={cohorts.alpha} cohort="alpha" onQueued={() => router.push('/manager/whatsapp')} />
+          <CohortPane bundle={cohorts.alpha} cohort="alpha" onQueued={openWhatsAppQueue} />
         </TabsContent>
         <TabsContent value="beta">
-          <CohortPane bundle={cohorts.beta} cohort="beta" onQueued={() => router.push('/manager/whatsapp')} />
+          <CohortPane bundle={cohorts.beta} cohort="beta" onQueued={openWhatsAppQueue} />
         </TabsContent>
         <TabsContent value="gap">
           <GapPane
             rows={gapRows} setRows={setGapRows}
             days={gapDays} setDays={setGapDays}
             meta={cohorts.gap.meta}
-            onQueued={() => router.push('/manager/whatsapp')}
+            onQueued={openWhatsAppQueue}
           />
         </TabsContent>
         <TabsContent value="inactive">
           <InactivePane
             rows={inactiveRows} setRows={setInactiveRows}
             days={inactiveDays} setDays={setInactiveDays}
-            onQueued={() => router.push('/manager/whatsapp')}
+            onQueued={openWhatsAppQueue}
           />
         </TabsContent>
         <TabsContent value="pending">
@@ -141,16 +204,24 @@ export function ManagerClient({
           }} />
         </TabsContent>
         <TabsContent value="missed">
-          <CohortPane bundle={cohorts.missed} cohort="missed" onQueued={() => router.push('/manager/whatsapp')} />
+          <CohortPane bundle={cohorts.missed} cohort="missed" onQueued={openWhatsAppQueue} />
         </TabsContent>
         <TabsContent value="followup">
-          <CohortPane bundle={cohorts.followup} cohort="followup" onQueued={() => router.push('/manager/whatsapp')} />
+          <CohortPane bundle={cohorts.followup} cohort="followup" onQueued={openWhatsAppQueue} />
         </TabsContent>
         {savedCohorts.map(sc => (
           <TabsContent key={`saved-${sc.id}`} value={`saved-${sc.id}`}>
-            <SavedCohortPane cohort={sc} onDelete={() => { deleteSaved(sc.id); setTab("alpha"); }} onQueued={() => router.push('/manager/whatsapp')} />
+            <SavedCohortPane cohort={sc} onDelete={() => { deleteSaved(sc.id); setTab("alpha"); }} onQueued={openWhatsAppQueue} />
           </TabsContent>
         ))}
+        <TabsContent value="whatsapp">
+          <InlineWhatsAppQueue
+            messages={queuedMessages}
+            summary={queueSummary}
+            loading={queueLoading}
+            onRefresh={openWhatsAppQueue}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Custom Builder — full-width expandable section */}
@@ -180,7 +251,7 @@ export function ManagerClient({
             <CustomBuilder
               rows={customRows}
               setRows={setCustomRows}
-              onQueued={() => router.push('/manager/whatsapp')}
+              onQueued={openWhatsAppQueue}
               onSaved={async (label, filter, discountPct) => {
                 await fetch("/api/cohorts/saved", {
                   method: "POST",
@@ -231,6 +302,13 @@ function CohortPane({
       <CardHeader>
         <CardTitle>{bundle.meta.label}</CardTitle>
         <CardDescription>{bundle.meta.description}</CardDescription>
+        {COHORT_EXAMPLES[cohort] && (
+          <div className="mt-2 rounded-md border border-accent/20 bg-accent/5 px-3 py-2 text-xs">
+            <span className="font-semibold text-accent">Example match · </span>
+            <span className="font-medium">{COHORT_EXAMPLES[cohort].who}</span>
+            <span className="text-muted-foreground"> — {COHORT_EXAMPLES[cohort].scenario}</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {showUnearned && bundle.rows.length > 0 && (
@@ -263,7 +341,7 @@ function CohortPane({
                   <TR key={r.patient_id}>
                     <TD className="font-mono text-xs text-muted-foreground">GDRC{String(r.patient_id + 10000)}</TD>
                     <TD className="font-medium">{r.patient_name}</TD>
-                    <TD className="text-muted-foreground text-sm">{r.phone}</TD>
+                    <TD><PhoneCell phone={r.phone} /></TD>
                     <TD className="text-center text-sm text-muted-foreground">{r.context.sessions_used != null ? r.context.sessions_used : "—"}</TD>
                     <TD className="text-center text-sm text-muted-foreground">{r.context.sessions_remaining != null ? r.context.sessions_remaining : "—"}</TD>
                     <TD><Badge variant="outline">{r.branch_name}</Badge></TD>
@@ -346,6 +424,11 @@ function GapPane({
       <CardHeader>
         <CardTitle>{meta.label}</CardTitle>
         <CardDescription>{meta.description}</CardDescription>
+        <div className="mt-2 rounded-md border border-accent/20 bg-accent/5 px-3 py-2 text-xs">
+          <span className="font-semibold text-accent">Example match · </span>
+          <span className="font-medium">Rahul K., 42 M · Bandra Branch</span>
+          <span className="text-muted-foreground"> — Paid ₹15,000 for an 8-session Laser Hair Removal package, used only 3. Last visited 130 days ago. ₹7,500 of paid balance still unclaimed — re-engage before it lapses.</span>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Days filter */}
@@ -364,7 +447,7 @@ function GapPane({
             </div>
           </div>
           <div className="flex gap-2">
-            {[90, 120, 180, 270].map(d => (
+            {[60, 90, 120, 180].map(d => (
               <button
                 key={d}
                 onClick={() => refresh(d)}
@@ -408,7 +491,7 @@ function GapPane({
                   <TR key={`${r.patient_id}-${r.context.package_id}`}>
                     <TD className="font-mono text-xs text-muted-foreground">GDRC{String(r.patient_id + 10000)}</TD>
                     <TD className="font-medium">{r.patient_name}</TD>
-                    <TD className="text-muted-foreground text-sm">{r.phone}</TD>
+                    <TD><PhoneCell phone={r.phone} /></TD>
                     <TD className="text-center text-sm">{r.context.sessions_used ?? "—"}</TD>
                     <TD className="text-center"><Badge variant={r.context.sessions_remaining > 0 ? "accent" : "outline"} className="text-[10px]">{r.context.sessions_remaining ?? "—"}</Badge></TD>
                     <TD><Badge variant="outline">{r.branch_name}</Badge></TD>
@@ -473,6 +556,11 @@ function InactivePane({
       <CardHeader>
         <CardTitle>Inactive Users</CardTitle>
         <CardDescription>Patients who haven't visited the clinic in the selected period — regardless of session balance.</CardDescription>
+        <div className="mt-2 rounded-md border border-accent/20 bg-accent/5 px-3 py-2 text-xs">
+          <span className="font-semibold text-accent">Example match · </span>
+          <span className="font-medium">Kavya R., 31 F · Mumbai Branch</span>
+          <span className="text-muted-foreground"> — Visited 3× in 2024 for facials and chemical peels. Last seen 100 days ago. Spent ₹28,000 total. No active package, no upcoming appointment.</span>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Days filter */}
@@ -526,7 +614,7 @@ function InactivePane({
                   <TR key={r.patient_id}>
                     <TD className="font-mono text-xs text-muted-foreground">GDRC{String(r.patient_id + 10000)}</TD>
                     <TD className="font-medium">{r.patient_name}</TD>
-                    <TD className="text-muted-foreground text-sm">{r.phone}</TD>
+                    <TD><PhoneCell phone={r.phone} /></TD>
                     <TD><Badge variant="outline">{r.branch_name}</Badge></TD>
                     <TD className="text-sm text-amber-600 font-medium">{r.context.days_since_last} days ago</TD>
                     <TD className="text-right font-medium text-sm">{inr(r.context.total_spent ?? 0)}</TD>
@@ -931,6 +1019,166 @@ function SavedCohortPane({ cohort, onDelete, onQueued }: { cohort: SavedCohort; 
 }
 
 // ---------------------------------------------------------------------------
+// Inline WhatsApp Queue (embedded in cohorts page)
+// ---------------------------------------------------------------------------
+
+function InlineWhatsAppQueue({
+  messages, summary, loading, onRefresh,
+}: {
+  messages: QueuedMessage[];
+  summary: { queued: number; sent: number };
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  const [filter, setFilter] = useState<"queued" | "sent" | "all">("queued");
+  const [isPending, start] = useTransition();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editedBodies, setEditedBodies] = useState<Record<number, string>>({});
+  const [scheduledAt, setScheduledAt] = useState<Record<number, string>>({});
+
+  const filtered = filter === "all" ? messages : messages.filter(m => m.status === filter);
+
+  const defaultScheduled = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0);
+    return d.toISOString().slice(0, 16);
+  };
+
+  const sendOne = (id: number) => {
+    start(async () => {
+      await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [id], edited_body: editedBodies[id], scheduled_at: scheduledAt[id] }),
+      });
+      setEditingId(null);
+      onRefresh();
+    });
+  };
+
+  const sendAll = () => {
+    const ids = filtered.filter(m => m.status === "queued").map(m => m.id);
+    if (!ids.length) return;
+    start(async () => {
+      await fetch("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      onRefresh();
+    });
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-16 text-center">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+          <div className="text-sm text-muted-foreground mt-2">Loading queue…</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-accent" />
+              WhatsApp Campaign Queue
+            </CardTitle>
+            <CardDescription>Review, edit and send drafts generated from cohorts. Production connects to Make.com webhook.</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="accent">Queued: {summary.queued}</Badge>
+            <Badge variant="success">Sent: {summary.sent}</Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["queued","sent","all"] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+          {filter === "queued" && filtered.length > 0 && (
+            <Button onClick={sendAll} disabled={isPending} className="ml-auto" size="sm">
+              {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Send all {filtered.length}
+            </Button>
+          )}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-secondary/40 px-4 py-10 text-center text-sm text-muted-foreground">
+            {summary.queued === 0
+              ? "No drafts yet — generate them from one of the cohort tabs above."
+              : "Nothing in this view."}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(m => {
+              const isEditing = editingId === m.id;
+              const body = editedBodies[m.id] ?? m.message_body;
+              const sched = scheduledAt[m.id] ?? defaultScheduled();
+              return (
+                <div key={m.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-secondary/30">
+                    <div>
+                      <div className="text-sm font-semibold">{m.patient_name}</div>
+                      <a href={`tel:${m.phone}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-1"><Phone className="h-3 w-3" />{m.phone}</a>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="font-mono text-[10px]">{m.discount_code}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{m.cohort_name}</Badge>
+                      <Badge variant={m.status === "sent" ? "success" : "accent"}>{m.status}</Badge>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {isEditing ? (
+                      <Textarea value={body} onChange={e => setEditedBodies(p => ({ ...p, [m.id]: e.target.value }))} rows={6} className="text-sm font-mono" />
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed bg-secondary/20 rounded-lg p-3">{body}</div>
+                    )}
+                    {m.status === "queued" && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Calendar className="h-3.5 w-3.5" />Send at:
+                        </div>
+                        <input type="datetime-local" value={sched}
+                          onChange={e => setScheduledAt(p => ({ ...p, [m.id]: e.target.value }))}
+                          className="text-xs rounded-md border border-input bg-background px-2 py-1 text-foreground" />
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setEditingId(isEditing ? null : m.id);
+                            if (!isEditing && !editedBodies[m.id]) setEditedBodies(p => ({ ...p, [m.id]: m.message_body }));
+                          }}>
+                            <Edit3 className="h-3.5 w-3.5 mr-1" />{isEditing ? "Done" : "Edit"}
+                          </Button>
+                          <Button size="sm" onClick={() => sendOne(m.id)} disabled={isPending}>
+                            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            {scheduledAt[m.id] ? "Schedule" : "Send now"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
@@ -940,5 +1188,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{label}</span>
       {children}
     </label>
+  );
+}
+
+function PhoneCell({ phone }: { phone: string }) {
+  return (
+    <a
+      href={`tel:${phone}`}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors"
+      onClick={e => e.stopPropagation()}
+    >
+      <Phone className="h-3 w-3" />
+      {phone}
+    </a>
   );
 }

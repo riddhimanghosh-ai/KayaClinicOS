@@ -699,9 +699,13 @@ function PrescriptionsSection({ portfolio }: { portfolio: PatientPortfolio }) {
               <div className="space-y-2">
                 {rx.items.map((item: any, i: number) => (
                   <div key={i} className="rounded-xl bg-purple-50 border border-purple-100 p-3">
-                    <div className="text-sm font-semibold text-purple-900">{item.name}</div>
-                    {item.instructions && <div className="text-xs text-purple-700 mt-0.5">{item.instructions}</div>}
-                    {item.duration_days > 0 && <div className="text-[10px] text-purple-500 mt-0.5">{item.duration_days} days</div>}
+                    {item.problem && <div className="text-[10px] font-medium uppercase tracking-wide text-purple-400">{item.problem}</div>}
+                    <div className="text-sm font-semibold text-purple-900">{item.product ?? item.name}</div>
+                    {(item.product_detail || item.duration_days) && (
+                      <div className="text-[10px] text-purple-500 mt-0.5">{item.product_detail ?? `${item.duration_days} days`}</div>
+                    )}
+                    {(item.dosage || item.instructions) && <div className="text-xs text-purple-700 mt-0.5">{item.dosage ?? item.instructions}</div>}
+                    {item.dosage_detail && <div className="text-[10px] text-purple-500 mt-0.5">{item.dosage_detail}</div>}
                   </div>
                 ))}
               </div>

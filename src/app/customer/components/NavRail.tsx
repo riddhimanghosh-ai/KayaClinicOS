@@ -1,0 +1,120 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+const Icon = ({ size = 18, children, stroke = 1.4, style }: any) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"
+    style={{ flexShrink: 0, ...style }}>
+    {children}
+  </svg>
+);
+
+const G = ({ cx, cy, r = 1.6 }: any) => <circle cx={cx} cy={cy} r={r} fill="var(--gold)" stroke="none" />;
+
+const IconHome = (p: any) => <Icon {...p}><path d="M3.5 11 L12 4 L20.5 11 V20 H3.5 Z" /><path d="M10 20 V14 H14 V20" /><G cx={12} cy={8} /></Icon>;
+const IconAppt = (p: any) => <Icon {...p}><rect x="3.5" y="5" width="17" height="15" rx="1.5" /><path d="M3.5 9.5 H20.5" /><path d="M8 3.5 V6.5 M16 3.5 V6.5" /><G cx={16} cy={14.5} /></Icon>;
+const IconMed = (p: any) => <Icon {...p}><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-30 12 12)" /><path d="M8.5 7.5 L15.5 16.5" /><G cx={15} cy={9.5} /></Icon>;
+const IconProgress = (p: any) => <Icon {...p}><rect x="3.5" y="5.5" width="7.5" height="13" rx="1" /><rect x="13" y="5.5" width="7.5" height="13" rx="1" /><path d="M11 9 H13 M11 12 H13 M11 15 H13" strokeWidth="1" /><G cx={17} cy={9} /></Icon>;
+const IconSummary = (p: any) => <Icon {...p}><path d="M5 4 H15 L19 8 V20 H5 Z" /><path d="M8 10 H16 M8 13 H16 M8 16 H12" /><G cx={15} cy={8} /></Icon>;
+const IconChat = (p: any) => <Icon {...p}><path d="M4 5.5 H20 V16 H13 L9 19.5 V16 H4 Z" /><circle cx="9" cy="11" r="0.6" fill="currentColor" stroke="none" /><circle cx="12" cy="11" r="0.6" fill="currentColor" stroke="none" /><G cx={15} cy={11} /></Icon>;
+const IconRewards = (p: any) => <Icon {...p}><circle cx="12" cy="10" r="6" /><path d="M8.5 14.5 L7 21 L12 18.5 L17 21 L15.5 14.5" /><G cx={12} cy={10} r={2} /></Icon>;
+const IconRefer = (p: any) => <Icon {...p}><circle cx="8" cy="9" r="3" /><path d="M2.5 19 C2.5 15.5 5 13.5 8 13.5 C11 13.5 13.5 15.5 13.5 19" /><circle cx="17" cy="11" r="2.4" /><path d="M14 19 C14 16.5 15.5 15 17 15 C18.5 15 20.5 16.5 20.5 19" /><G cx={17} cy={11} /></Icon>;
+const IconPackage = (p: any) => <Icon {...p}><path d="M3.5 7 L12 4 L20.5 7 V17 L12 20 L3.5 17 Z" /><path d="M3.5 7 L12 10 L20.5 7" /><path d="M12 10 V20" /><G cx={12} cy={10} /></Icon>;
+const IconBlog = (p: any) => <Icon {...p}><path d="M5 4 H17 L19.5 6.5 V20 H5 Z" /><path d="M8 9 H16 M8 12 H16 M8 15 H13" /><G cx={17.5} cy={6.5} /></Icon>;
+const IconVideo = (p: any) => <Icon {...p}><rect x="3" y="5.5" width="18" height="13" rx="1.5" /><path d="M10.5 9.5 L14.5 12 L10.5 14.5 Z" fill="currentColor" stroke="none" /><G cx={20} cy={8} r={1.2} /></Icon>;
+const IconChevron = (p: any) => <Icon {...p}><path d="M6 9 L12 15 L18 9" /></Icon>;
+
+const NavItem = ({ icon: I, label, active, badge, onClick }: any) => (
+  <div className={`nav-item${active ? ' active' : ''}`} onClick={onClick} style={{ cursor: 'pointer' }}>
+    <span className="nav-icon"><I size={15} stroke={1.6} /></span>
+    <span>{label}</span>
+    {badge && <span className={`badge${active ? '' : ' mute'}`}>{badge}</span>}
+  </div>
+);
+
+const Section = ({ label, open, onToggle, children }: any) => (
+  <div style={{ marginTop: 8 }}>
+    <div className="group-label" style={{ display: 'flex', alignItems: 'center' }}>
+      <span>{label}</span>
+    </div>
+    {open && <div>{children}</div>}
+  </div>
+);
+
+export default function NavRail({ active = 'dashboard' }: { active?: string }) {
+  const router = useRouter();
+  const careActive = ['dashboard', 'appointments', 'prescriptions', 'before-after', 'chatbot', 'summary'].includes(active);
+  const memberActive = ['loyalty', 'referral', 'products'].includes(active);
+  const learnActive = ['blogs', 'videos'].includes(active);
+  return (
+    <div className="nav-rail">
+      <div>
+        <div className="brand" style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+          <span>kaya</span><i>.</i>
+        </div>
+        <div className="brand-mark">Skin · Hair · Body</div>
+      </div>
+
+      <Section label="Care" open={true} onToggle={() => {}}>
+        <NavItem icon={IconHome} label="Overview" active={active === 'dashboard'} onClick={() => router.push('/customer/dashboard')} />
+        <NavItem icon={IconAppt} label="Appointments" badge="2" active={active === 'appointments'} onClick={() => router.push('/customer/sessions')} />
+        <NavItem icon={IconMed} label="Medications" badge="4" active={active === 'prescriptions'} onClick={() => router.push('/customer/prescriptions')} />
+        <NavItem icon={IconProgress} label="Progress" active={active === 'before-after'} onClick={() => router.push('/customer/before-after')} />
+        <NavItem icon={IconSummary} label="Summaries" active={active === 'summary'} onClick={() => router.push('/customer/summary')} />
+        <NavItem icon={IconChat} label="Dr. AI" active={active === 'chatbot'} onClick={() => router.push('/customer/chatbot')} />
+      </Section>
+
+      <Section label="Membership" open={true} onToggle={() => {}}>
+        <NavItem icon={IconRewards} label="Loyalty" active={active === 'loyalty'} onClick={() => router.push('/customer/loyalty')} />
+        <NavItem icon={IconRefer} label="Referrals" active={active === 'referral'} onClick={() => router.push('/customer/referral')} />
+        <NavItem icon={IconPackage} label="Products" active={active === 'products'} onClick={() => router.push('/customer/products')} />
+      </Section>
+
+      <Section label="Learn" open={true} onToggle={() => {}}>
+        <NavItem icon={IconBlog} label="Articles" active={active === 'blogs'} onClick={() => router.push('/customer/blog')} />
+        <NavItem icon={IconVideo} label="Videos" active={active === 'videos'} onClick={() => router.push('/customer/videos')} />
+      </Section>
+
+      <div style={{ marginTop: 'auto', borderTop: '1px solid var(--hair)', paddingTop: 14 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{
+            width: 32, height: 32,
+            background: 'var(--paper-3)',
+            border: '1px solid var(--rule)',
+            color: 'var(--muted)',
+            borderRadius: '0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'var(--mono)', fontSize: 9,
+          }}>PR</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>Priya R.</div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--mute)' }}>ID · 8842·G</div>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('user');
+              router.push('/customer/login');
+            }}
+            title="Sign out"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: 6, borderRadius: 0, color: 'var(--muted)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-tint)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--mute)'; e.currentTarget.style.background = 'none'; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

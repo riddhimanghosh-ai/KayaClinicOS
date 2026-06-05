@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Loader2, Search, UserRound, MapPin, MessageSquare, Sparkles } from "lucide-react";
+import { Loader2, Search, UserRound, MapPin, MessageSquare, Sparkles, Phone, Calendar, TrendingUp, AlertCircle, Gift } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { inr } from "@/lib/utils";
-import type { Patient, PatientPortfolio } from "@/lib/types";
-import { useRouter } from "next/navigation";
+import { PrescriptionDocument } from "@/components/prescription-document";
+import type { Patient, PatientPortfolio, RxRow } from "@/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export function PatientsClient({ patients }: { patients: Patient[] }) {
   const [search, setSearch] = useState("");
@@ -19,6 +20,16 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
   const [loading, setLoading] = useState(false);
   const [sending, startSend] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Support deep-link from Daily Ops: /manager/patients?id=123
+  useEffect(() => {
+    const idParam = searchParams.get("id");
+    if (idParam) {
+      const id = Number(idParam);
+      if (Number.isFinite(id)) loadPortfolio(id);
+    }
+  }, []);
 
   const filtered = search.trim()
     ? patients.filter(p =>
@@ -154,13 +165,18 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="sessions">
+            <Tabs defaultValue="call">
               <TabsList>
+                <TabsTrigger value="call">📞 Call Context</TabsTrigger>
                 <TabsTrigger value="sessions">Sessions</TabsTrigger>
                 <TabsTrigger value="packages">Packages</TabsTrigger>
                 <TabsTrigger value="products">Products</TabsTrigger>
+                <TabsTrigger value="rx">Prescriptions</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
+              <TabsContent value="call">
+                <CallContextPane portfolio={portfolio} />
+              </TabsContent>
               <TabsContent value="sessions">
                 <Card>
                   <CardHeader><CardTitle>Sessions consumed (cross-branch)</CardTitle></CardHeader>
@@ -246,6 +262,9 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
                   </CardContent>
                 </Card>
               </TabsContent>
+              <TabsContent value="rx">
+                <ManagerRxPane portfolio={portfolio} onUpdated={() => loadPortfolio(portfolio.patient.id)} />
+              </TabsContent>
               <TabsContent value="summary">
                 <ManagerSummaryPane patientId={portfolio.patient.id} />
               </TabsContent>
@@ -253,6 +272,163 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// ---- Call Context Pane -----------------------------------------------------
+
+function CallContextPane({ portfolio }: { portfolio: PatientPortfolio | null }) {
+  if (!portfolio) return null;
+  const p = portfolio.patient;
+
+  const pendingPackages = portfolio.packages.filter(pkg => pkg.sessions_used < pkg.sessions_total);
+  const totalPendingSessions = pendingPackages.reduce((s, pkg) => s + (pkg.sessions_total - pkg.sessions_used), 0);
+  const lastSession = portfolio.sessions[0] ?? null;
+  const lastVisitDate = lastSession?.session_date ?? null;
+  const daysSince = lastVisitDate
+    ? Math.round((Date.now() - new Date(lastVisitDate).getTime()) / 86400000)
+    : null;
+  const latestTags = portfolio.tags[0] ?? null;
+  const latestNote = portfolio.notes[0] ?? null;
+  const totalSpend = portfolio.packages.reduce((s, pk) => s + pk.collection_paid_inr, 0)
+    + portfolio.product_purchases.reduce((s, pp) => s + pp.price_paid_inr * pp.qty, 0);
+
+  const talkingPoints: string[] = [];
+  if (totalPendingSessions > 0) {
+    const names = pendingPackages.map(pk => (pk as any).service_name).join(", ");
+    talkingPoints.push(`Has ${totalPendingSessions} unused session${totalPendingSessions > 1 ? "s" : ""} (${names}) — ask if they'd like to schedule`);
+  }
+  if (daysSince !== null && daysSince > 60) {
+    talkingPoints.push(`Last visited ${daysSince} days ago — check if they faced any issues or need a follow-up`);
+  }
+  if (latestTags?.treatment_ready_for) {
+    talkingPoints.push(`Doctor noted ready for: ${latestTags.treatment_ready_for} — this is a warm upsell opportunity`);
+  }
+  if (latestTags?.active_acne_status) {
+    talkingPoints.push(`Active acne status on record: ${latestTags.active_acne_status} — follow up on treatment response`);
+  }
+  if (portfolio.photos.length > 0) {
+    talkingPoints.push(`${portfolio.photos.length} skin photos on file — can share visual progress during the call to motivate continuation`);
+  }
+  if (pendingPackages.some(pk => pk.expiry_date && pk.expiry_date < new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10))) {
+    talkingPoints.push("One or more packages expire within 30 days — create urgency to book remaining sessions");
+  }
+  if (p.premium_tier === "gold" || p.premium_tier === "platinum") {
+    talkingPoints.push(`Premium ${p.premium_tier} member — acknowledge their loyalty and offer priority booking`);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Quick stats for the call */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Phone className="h-4 w-4 text-accent" /> At-a-glance before calling
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Phone</div>
+              <a href={`tel:${p.phone}`} className="text-sm font-semibold text-accent hover:underline flex items-center gap-1">
+                <Phone className="h-3.5 w-3.5" />{p.phone}
+              </a>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Last Visit</div>
+              <div className="text-sm font-semibold">
+                {lastVisitDate
+                  ? <>{new Date(lastVisitDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} <span className="text-muted-foreground font-normal">({daysSince}d ago)</span></>
+                  : <span className="text-muted-foreground">No visits yet</span>
+                }
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Pending Sessions</div>
+              <div className={`text-sm font-semibold ${totalPendingSessions > 0 ? "text-accent" : "text-muted-foreground"}`}>
+                {totalPendingSessions > 0 ? `${totalPendingSessions} unused` : "None"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1">Lifetime Spend</div>
+              <div className="text-sm font-semibold">{inr(totalSpend)}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Talking points */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-accent" /> Suggested talking points
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {talkingPoints.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No specific talking points — this patient is up to date.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {talkingPoints.map((pt, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pending packages detail */}
+      {pendingPackages.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" /> Open Packages
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingPackages.map(pkg => {
+              const remaining = pkg.sessions_total - pkg.sessions_used;
+              const expiringSoon = pkg.expiry_date && pkg.expiry_date < new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+              return (
+                <div key={pkg.id} className="flex items-center justify-between rounded-lg border bg-secondary/30 px-3 py-2">
+                  <div>
+                    <div className="text-sm font-medium">{(pkg as any).service_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {pkg.sessions_used} of {pkg.sessions_total} used · {remaining} remaining
+                      {pkg.expiry_date && <> · Expires {pkg.expiry_date}</>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {expiringSoon && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        <AlertCircle className="h-3 w-3 mr-1" />Expiring
+                      </Badge>
+                    )}
+                    <Badge variant="accent" className="text-[10px]">{remaining} left</Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Last doctor note */}
+      {latestNote && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Latest Doctor Note</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">{latestNote.raw_text}</p>
+            <div className="text-[10px] text-muted-foreground mt-2">{latestNote.created_at?.slice(0, 10)}</div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -373,6 +549,125 @@ function ManagerSummaryPane({ patientId }: { patientId: number }) {
         </button>
         <button onClick={load} className="text-xs text-muted-foreground hover:text-foreground underline">Refresh</button>
       </div>
+    </div>
+  );
+}
+
+// ---- Manager Prescriptions Pane (fill costs) -------------------------------
+
+function ManagerRxPane({
+  portfolio,
+  onUpdated,
+}: {
+  portfolio: PatientPortfolio;
+  onUpdated: () => void;
+}) {
+  if (portfolio.prescriptions.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          No prescriptions on file.
+        </CardContent>
+      </Card>
+    );
+  }
+  const weightText = portfolio.attributes.find((a) => a.key === "weight_kg")?.value
+    ? `${portfolio.attributes.find((a) => a.key === "weight_kg")!.value} kg`
+    : null;
+
+  return (
+    <div className="space-y-4">
+      {portfolio.prescriptions.map((rx: any) => (
+        <ManagerRxCard key={rx.id} rx={rx} patient={portfolio.patient} weightText={weightText} onUpdated={onUpdated} />
+      ))}
+    </div>
+  );
+}
+
+function ManagerRxCard({
+  rx,
+  patient,
+  weightText,
+  onUpdated,
+}: {
+  rx: any;
+  patient: PatientPortfolio["patient"];
+  weightText: string | null;
+  onUpdated: () => void;
+}) {
+  const [costs, setCosts] = useState<Record<number, string>>(() => {
+    const init: Record<number, string> = {};
+    (rx.items ?? []).forEach((it: RxRow, i: number) => {
+      init[i] = it.cost === null || it.cost === undefined ? "" : String(it.cost);
+    });
+    return init;
+  });
+  const [saving, start] = useTransition();
+  const missing = (rx.items ?? []).some((it: RxRow) => it.cost === null || it.cost === undefined);
+
+  if (rx.image_path) {
+    return (
+      <Card>
+        <CardContent className="p-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/${rx.image_path}`} alt="Prescription scan" className="max-h-72 rounded-md border border-border object-contain" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const save = () => {
+    start(async () => {
+      const payload: Record<string, number | null> = {};
+      Object.entries(costs).forEach(([i, v]) => {
+        payload[i] = v === "" ? null : Number(v);
+      });
+      await fetch(`/api/prescriptions/${rx.id}/cost`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costs: payload }),
+      });
+      onUpdated();
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <PrescriptionDocument
+        patient={patient}
+        doctorName={rx.doctor_name}
+        clinicalRecommendation={rx.clinical_recommendation ?? rx.regimen_notes}
+        items={rx.items ?? []}
+        dispensingFeeInr={rx.dispensing_fee_inr}
+        createdAt={rx.created_at}
+        weightText={weightText}
+      />
+      {missing && (
+        <Card className="border-accent/30">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Fill missing costs</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {(rx.items ?? []).map((it: RxRow, i: number) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="flex-1 text-sm">{it.product}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">₹</span>
+                  <Input
+                    type="number"
+                    className="w-28"
+                    placeholder="cost"
+                    value={costs[i] ?? ""}
+                    onChange={(e) => setCosts((c) => ({ ...c, [i]: e.target.value }))}
+                  />
+                </div>
+              </div>
+            ))}
+            <Button size="sm" onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save costs
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

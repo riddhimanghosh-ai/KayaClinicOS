@@ -42,7 +42,7 @@ export default function ManagerPage() {
   const cohorts = {
     alpha: { meta: meta("alpha"), rows: recipeAlpha() },
     beta: { meta: meta("beta"), rows: recipeBeta() },
-    gap: { meta: meta("gap"), rows: recipeGapCloser() },
+    gap: { meta: meta("gap"), rows: recipeGapCloser(2) },
     inactive: {
       meta: { label: "Inactive Users", description: "Patients who haven't visited the clinic in the selected number of days.", defaultDiscountPct: 15 },
       rows: recipeInactiveUsers(90),

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import Image from "next/image";
-import { Loader2, Send, UserRound, Mic, MicOff, Sparkles } from "lucide-react";
+import { Loader2, Send, UserRound, Mic, MicOff, Sparkles, Upload, Pause, Play, Square, ShieldCheck, Printer } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -12,7 +12,8 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { inr, formatLabel } from "@/lib/utils";
-import type { Patient, PatientPortfolio, CheckIn, RawNote } from "@/lib/types";
+import { PrescriptionDocument, SAMPLE_RX } from "@/components/prescription-document";
+import type { Patient, PatientPortfolio, CheckIn, RawNote, RxRow, Consultation, PatientAttribute, SkinPhoto } from "@/lib/types";
 
 type CheckInLite = CheckIn & { patient_name: string; branch_name: string };
 
@@ -126,8 +127,14 @@ function PortfolioView({
   onTagSaved: () => void;
 }) {
   const p = portfolio.patient;
-  const [activeTab, setActiveTab] = useState("history");
+  const [activeTab, setActiveTab] = useState("live");
   const [summaryKey, setSummaryKey] = useState(0);
+
+  const latestSession = portfolio.sessions[0];
+  const doctorId: number | null = latestSession?.doctor_id ?? null;
+  const weightText = portfolio.attributes.find((a) => a.key === "weight_kg")?.value
+    ? `${portfolio.attributes.find((a) => a.key === "weight_kg")!.value} kg`
+    : null;
 
   const handleNoteSaved = () => {
     onTagSaved();
@@ -177,6 +184,7 @@ function PortfolioView({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          <TabsTrigger value="live">Consultation</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
           <TabsTrigger value="tags">Clinical tags</TabsTrigger>
@@ -185,6 +193,15 @@ function PortfolioView({
           <TabsTrigger value="summary">Summary</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="live">
+          <LiveConsultPane
+            patientId={p.id}
+            doctorId={doctorId}
+            portfolio={portfolio}
+            onSaved={() => onTagSaved()}
+            onWriteRx={() => setActiveTab("rx")}
+          />
+        </TabsContent>
         <TabsContent value="history">
           <HistoryPane portfolio={portfolio} />
         </TabsContent>
@@ -198,7 +215,11 @@ function PortfolioView({
           <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
         </TabsContent>
         <TabsContent value="rx">
-          <PrescriptionsPane portfolio={portfolio} onSaved={onTagSaved} />
+          <PrescriptionsPane
+            portfolio={portfolio}
+            weightText={weightText}
+            onSaved={onTagSaved}
+          />
         </TabsContent>
         <TabsContent value="summary">
           <SummaryPane key={summaryKey} patientId={portfolio.patient.id} />
@@ -358,6 +379,9 @@ function TimelinePane({ portfolio }: { portfolio: PatientPortfolio }) {
     () => [...portfolio.photos].sort((a, b) => a.visit_date.localeCompare(b.visit_date)),
     [portfolio.photos]
   );
+  const regions = useMemo(() => Array.from(new Set(photos.map((p) => p.region))), [photos]);
+  const [region, setRegion] = useState<string>(regions[0] ?? "");
+
   if (photos.length === 0) {
     return (
       <Card>
@@ -367,24 +391,43 @@ function TimelinePane({ portfolio }: { portfolio: PatientPortfolio }) {
       </Card>
     );
   }
-  const first = photos[0];
-  const last = photos[photos.length - 1];
+
+  const activeRegion = regions.includes(region) ? region : regions[0];
+  const regionPhotos = photos.filter((p) => p.region === activeRegion);
 
   return (
     <div className="space-y-6">
-      {photos.length >= 2 && (
+      {regionPhotos.length >= 2 && (
         <Card>
           <CardHeader>
-            <CardTitle>Before &amp; After</CardTitle>
-            <CardDescription>
-              {first.visit_date} → {last.visit_date}
-            </CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <CardTitle>Before &amp; After</CardTitle>
+                <CardDescription>
+                  {regionPhotos[0].visit_date} → {regionPhotos[regionPhotos.length - 1].visit_date} · drag to compare
+                </CardDescription>
+              </div>
+              {regions.length > 1 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {regions.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRegion(r)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                        r === activeRegion
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {r.replace(/_/g, " ")}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <PhotoTile photo={first} label={`Before · ${first.visit_date}`} />
-              <PhotoTile photo={last} label={`After · ${last.visit_date}`} />
-            </div>
+            <BeforeAfterSlider photos={regionPhotos} />
           </CardContent>
         </Card>
       )}
@@ -396,8 +439,13 @@ function TimelinePane({ portfolio }: { portfolio: PatientPortfolio }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((p) => (
-              <PhotoTile key={p.id} photo={p} label={`${p.visit_date} · ${p.region}`} />
+            {photos.map((p, i) => (
+              <div key={p.id} className="rounded-md border border-border overflow-hidden bg-card">
+                <div className="w-full aspect-square" style={{ background: skinGradient(photos.length > 1 ? i / (photos.length - 1) : 0) }} />
+                <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
+                  {p.visit_date} · {p.region.replace(/_/g, " ")}
+                </div>
+              </div>
             ))}
           </div>
         </CardContent>
@@ -406,12 +454,83 @@ function TimelinePane({ portfolio }: { portfolio: PatientPortfolio }) {
   );
 }
 
-function PhotoTile({ photo, label }: { photo: { image_path: string }; label: string }) {
+// Progress-photo visual matched to the customer app: earliest frame (t=0) shows
+// more pigment/spots, latest (t=1) is clearer. Rendered as a gradient placeholder
+// so the doctor portal shows the same imagery the customer sees.
+function skinGradient(t: number): string {
+  const a = (base: number) => +(base * (1 - t)).toFixed(2);
+  return [
+    `radial-gradient(35% 25% at 32% 38%, rgba(140,80,55,${a(0.55)}) 0%, transparent 70%)`,
+    `radial-gradient(28% 22% at 58% 42%, rgba(130,75,50,${a(0.5)}) 0%, transparent 70%)`,
+    `radial-gradient(18% 14% at 48% 56%, rgba(120,65,40,${a(0.45)}) 0%, transparent 70%)`,
+    `radial-gradient(120% 80% at 30% 20%, #f6e6d4 0%, #e6c8a8 40%, #c39a72 75%, #7a553a 100%)`,
+  ].join(", ");
+}
+
+function BeforeAfterSlider({ photos }: { photos: SkinPhoto[] }) {
+  const n = photos.length;
+  const before = photos[0];
+  const [afterIdx, setAfterIdx] = useState(n - 1);
+  const after = photos[afterIdx];
+  const [pos, setPos] = useState(50);
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const tFor = (i: number) => (n > 1 ? i / (n - 1) : 0);
+
+  const move = (clientX: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setPos(Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100)));
+  };
+
   return (
-    <div className="rounded-md border border-border overflow-hidden bg-card">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/${photo.image_path}`} alt={label} className="w-full aspect-square object-cover" />
-      <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border">{label}</div>
+    <div className="space-y-3">
+      <div
+        ref={ref}
+        onPointerDown={(e) => { dragging.current = true; ref.current?.setPointerCapture(e.pointerId); move(e.clientX); }}
+        onPointerMove={(e) => { if (dragging.current) move(e.clientX); }}
+        onPointerUp={() => { dragging.current = false; }}
+        className="relative w-full overflow-hidden rounded-md border border-border select-none"
+        style={{ aspectRatio: "4 / 3", cursor: "ew-resize", touchAction: "none", background: "var(--paper-2, #f4ece2)" }}
+      >
+        {/* base = after (clearer) */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: skinGradient(tFor(afterIdx)) }} />
+        {/* overlay = before (more pigment), clipped to the left pos% */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: skinGradient(0), clipPath: `inset(0 ${100 - pos}% 0 0)` }}
+        />
+        <div className="absolute top-3 left-3"><Badge variant="outline" className="bg-background/90">Before · {before.visit_date}</Badge></div>
+        <div className="absolute top-3 right-3"><Badge variant="accent">After · {after.visit_date}</Badge></div>
+        {/* divider + handle */}
+        <div className="absolute top-0 bottom-0 pointer-events-none" style={{ left: `${pos}%`, width: 1, background: "white", boxShadow: "0 0 0 1px rgba(0,0,0,0.1)" }}>
+          <div className="absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-foreground bg-background text-foreground">
+            <svg width="16" height="12" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+              <path d="M5 3 L1 7 L5 11" /><path d="M13 3 L17 7 L13 11" /><path d="M1 7 H17" />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">
+        ← Drag to compare · captured under standardised clinic light
+      </div>
+      {/* Photo log strip — click to set the "after" frame */}
+      <div className="flex gap-2 overflow-x-auto pt-1">
+        {photos.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => setAfterIdx(i)}
+            className={`shrink-0 rounded-md border overflow-hidden w-20 transition-colors ${
+              i === afterIdx ? "border-accent ring-1 ring-accent" : "border-border hover:border-accent/50"
+            }`}
+            title={`Set ${p.visit_date} as the after frame`}
+          >
+            <div className="h-16 w-full" style={{ background: skinGradient(tFor(i)) }} />
+            <div className="px-1 py-0.5 text-[9px] text-muted-foreground border-t border-border">{p.visit_date.slice(5)}</div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -423,89 +542,434 @@ function TagsPane({ portfolio }: { portfolio: PatientPortfolio }) {
     return (
       <Card>
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No tags yet. Capture a note in the Post-consult capture tab.
+          No clinical tags yet. Capture a post-consult note to populate this timeline.
         </CardContent>
       </Card>
     );
   }
 
-  // Match each tag entry to the closest raw note by session_id, then by created_at proximity
   const noteForTag = (tagSessionId: number | null, tagCreatedAt: string): RawNote | null => {
     const notes = portfolio.notes ?? [];
     if (tagSessionId) {
       const match = notes.find((n) => n.session_id === tagSessionId);
       if (match) return match;
     }
-    // Fall back to closest by timestamp (within 60 seconds)
     const tagMs = new Date(tagCreatedAt).getTime();
-    return (
-      notes.find((n) => Math.abs(new Date(n.created_at).getTime() - tagMs) < 60_000) ?? null
-    );
+    return notes.find((n) => Math.abs(new Date(n.created_at).getTime() - tagMs) < 60_000) ?? null;
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Clinical tag history</CardTitle>
-        <CardDescription>
-          Each entry shows the original doctor note and the structured tags extracted from it. Tags drive the Cohort Engine.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {portfolio.tags.map((t) => {
-          let free: Record<string, any> = {};
-          try {
-            free = t.free_tags_json ? JSON.parse(t.free_tags_json) : {};
-          } catch {}
-          const note = noteForTag(t.session_id, t.created_at);
-          return (
-            <div key={t.id} className="rounded-md border border-border bg-card overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-secondary/40 border-b border-border">
-                <span className="text-xs font-medium text-muted-foreground">{t.created_at}</span>
-                {t.session_id && (
-                  <span className="text-[10px] font-mono text-muted-foreground">session #{t.session_id}</span>
-                )}
-              </div>
-              {note && (
-                <details className="border-b border-border">
-                  <summary className="cursor-pointer px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
-                    Doctor note — click to expand
-                  </summary>
-                  <div className="px-4 py-3 text-sm whitespace-pre-wrap bg-secondary/20 text-foreground/90 leading-relaxed">
-                    {note.raw_text}
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Clinical tag timeline</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Tags extracted from doctor notes · feed the Cohort Engine</p>
+      </div>
+
+      <div className="relative pl-8">
+        {/* Vertical spine */}
+        <div className="absolute left-3 top-2 bottom-2 w-px bg-border" />
+
+        <div className="space-y-5">
+          {portfolio.tags.map((t) => {
+            let free: Record<string, any> = {};
+            try { free = t.free_tags_json ? JSON.parse(t.free_tags_json) : {}; } catch {}
+            const note = noteForTag(t.session_id, t.created_at);
+            const date = t.created_at.slice(0, 10);
+            const time = t.created_at.slice(11, 16);
+
+            // Only show chips for fields that have actual data
+            type Chip = { label: string; value: string; cls: string };
+            const chips: Chip[] = [];
+            if (t.primary_concern)         chips.push({ label: "Concern",       value: formatLabel(t.primary_concern),         cls: "bg-rose-50 text-rose-700 border-rose-100" });
+            if (t.active_acne_status)      chips.push({ label: "Acne",          value: formatLabel(t.active_acne_status),      cls: "bg-orange-50 text-orange-700 border-orange-100" });
+            if (t.barrier_status)          chips.push({ label: "Barrier",        value: formatLabel(t.barrier_status),          cls: "bg-blue-50 text-blue-700 border-blue-100" });
+            if (t.treatment_ready_for)     chips.push({ label: "Ready for",      value: formatLabel(t.treatment_ready_for),     cls: "bg-emerald-50 text-emerald-700 border-emerald-100" });
+            if (t.next_recommended_service)chips.push({ label: "Next",           value: formatLabel(t.next_recommended_service),cls: "bg-violet-50 text-violet-700 border-violet-100" });
+            if (t.product_adherence_score != null) chips.push({ label: "Adherence", value: `${t.product_adherence_score}/10`, cls: "bg-amber-50 text-amber-700 border-amber-100" });
+            if (t.scar_treatment_candidate) chips.push({ label: "Scar candidate", value: "Yes", cls: "bg-pink-50 text-pink-700 border-pink-100" });
+
+            const freeChips = Object.entries(free).filter(([, v]) => v != null && String(v).trim());
+
+            return (
+              <div key={t.id} className="relative">
+                {/* Timeline dot */}
+                <div className="absolute -left-5 top-3 h-3.5 w-3.5 rounded-full border-2 border-accent bg-background" />
+
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
+                  {/* Date row */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-secondary/30 border-b border-border">
+                    <span className="text-xs font-semibold text-foreground">{date}</span>
+                    <span className="text-[10px] text-muted-foreground">{time}</span>
+                    {t.session_id && (
+                      <span className="ml-auto text-[10px] font-mono text-muted-foreground">session #{t.session_id}</span>
+                    )}
                   </div>
-                </details>
-              )}
-              <div className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <TagField label="Primary concern" value={formatLabel(t.primary_concern)} />
-                  <TagField label="Barrier" value={formatLabel(t.barrier_status)} />
-                  <TagField label="Acne" value={formatLabel(t.active_acne_status)} />
-                  <TagField label="Scar candidate" value={t.scar_treatment_candidate ? "Yes" : "No"} />
-                  <TagField label="Adherence" value={t.product_adherence_score != null ? `${t.product_adherence_score}/10` : null} />
-                  <TagField label="Ready for" value={formatLabel(t.treatment_ready_for)} />
-                  <TagField label="Next recommended" value={formatLabel(t.next_recommended_service)} />
+
+                  <div className="p-4 space-y-3">
+                    {/* Structured tag chips */}
+                    {chips.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {chips.map((c, ci) => (
+                          <span key={ci} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${c.cls}`}>
+                            <span className="opacity-60 text-[9px] uppercase tracking-wider">{c.label}</span>
+                            {c.value}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No structured tags extracted</p>
+                    )}
+
+                    {/* Free-form extra tags */}
+                    {freeChips.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {freeChips.map(([k, v]) => (
+                          <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
+                            <span className="opacity-60 text-[9px] uppercase tracking-wider">{formatLabel(k)}</span>
+                            {String(v)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Original note — collapsed by default */}
+                    {note && (
+                      <details>
+                        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none transition-colors">
+                          View doctor note ↓
+                        </summary>
+                        <div className="mt-2 rounded-lg bg-secondary/40 px-3.5 py-3 text-sm whitespace-pre-wrap leading-relaxed text-foreground/80 border border-border">
+                          {note.raw_text}
+                        </div>
+                      </details>
+                    )}
+                  </div>
                 </div>
-                {Object.keys(free).length > 0 && (
-                  <details className="mt-3 text-xs">
-                    <summary className="cursor-pointer text-muted-foreground">Free tags</summary>
-                    <pre className="mt-2 rounded bg-secondary/60 p-2 overflow-auto">{JSON.stringify(free, null, 2)}</pre>
-                  </details>
-                )}
               </div>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
-function TagField({ label, value }: { label: string; value: string | number | null }) {
+// ---- Live consultation recording ------------------------------------------
+
+function fmtClock(sec: number) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function LiveConsultPane({
+  patientId,
+  doctorId,
+  portfolio,
+  onSaved,
+  onWriteRx,
+}: {
+  patientId: number;
+  doctorId: number | null;
+  portfolio: PatientPortfolio;
+  onSaved: () => void;
+  onWriteRx: () => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ masked: string; attributes: Record<string, string> } | null>(null);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [showRxRecorder, setShowRxRecorder] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const stopTimer = () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  };
+  useEffect(() => () => stopTimer(), []);
+
+  const postAudio = async (blob: Blob, durationSec: number | null) => {
+    setProcessing(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("audio", blob, "consultation.webm");
+      fd.append("patient_id", String(patientId));
+      if (doctorId) fd.append("doctor_id", String(doctorId));
+      if (durationSec) fd.append("duration_sec", String(durationSec));
+      const res = await fetch("/api/consultations", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      setResult({ masked: data.masked, attributes: data.attributes ?? {} });
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to process consultation");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const startRecording = async () => {
+    setError(null);
+    setResult(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "";
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stopTimer();
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        const dur = elapsed;
+        if (chunksRef.current.length === 0) { setError("No audio captured."); return; }
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        await postAudio(blob, dur);
+      };
+      mediaRecorderRef.current = mr;
+      mr.start(1000);
+      setElapsed(0);
+      setRecording(true);
+      setPaused(false);
+      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+    } catch {
+      setError("Could not access microphone. Check browser permissions, or upload an audio file instead.");
+    }
+  };
+
+  const pauseRecording = () => {
+    mediaRecorderRef.current?.pause();
+    setPaused(true);
+    stopTimer();
+  };
+  const resumeRecording = () => {
+    mediaRecorderRef.current?.resume();
+    setPaused(false);
+    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+  };
+  const endRecording = () => {
+    setRecording(false);
+    setPaused(false);
+    mediaRecorderRef.current?.stop();
+  };
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) { setResult(null); postAudio(f, null); }
+    e.target.value = "";
+  };
+
+  const submitPaste = async () => {
+    if (!pasteText.trim()) return;
+    setProcessing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/consultations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: patientId, doctor_id: doctorId, transcript: pasteText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      setResult({ masked: data.masked, attributes: data.attributes ?? {} });
+      setPasteText("");
+      setShowPaste(false);
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to process transcript");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
-    <div>
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-0.5 font-medium">{value ?? "—"}</div>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Consultation recording
+            <Badge variant="outline" className="gap-1 text-[10px]">
+              <ShieldCheck className="h-3 w-3" /> PII encrypted
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Record the live doctor–patient conversation. The transcript is generated afterward with
+            personal details masked ([person], [phone]…); the original is stored encrypted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Recording status / controls */}
+          {recording ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3">
+              <span className={`h-3 w-3 rounded-full bg-destructive ${paused ? "" : "animate-pulse"}`} />
+              <span className="text-sm font-medium text-destructive">
+                {paused ? "Paused" : "Recording"} · {fmtClock(elapsed)}
+              </span>
+              <div className="ml-auto flex gap-2">
+                {paused ? (
+                  <Button size="sm" variant="outline" onClick={resumeRecording}>
+                    <Play className="h-4 w-4" /> Resume
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={pauseRecording}>
+                    <Pause className="h-4 w-4" /> Pause
+                  </Button>
+                )}
+                <Button size="sm" variant="destructive" onClick={endRecording}>
+                  <Square className="h-4 w-4" /> End &amp; transcribe
+                </Button>
+              </div>
+            </div>
+          ) : processing ? (
+            <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+              <Loader2 className="h-4 w-4 animate-spin" /> Transcribing &amp; extracting data points…
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={startRecording}>
+                <Mic className="h-4 w-4" /> Start consultation recording
+              </Button>
+              <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={onFile} />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4" /> Upload audio file
+              </Button>
+              <Button variant="ghost" onClick={() => setShowPaste((v) => !v)}>
+                Paste transcript
+              </Button>
+            </div>
+          )}
+
+          {showPaste && !recording && !processing && (
+            <div className="space-y-2">
+              <Textarea
+                rows={4}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="Paste a consultation transcript here (for demos)…"
+              />
+              <Button size="sm" onClick={submitPaste} disabled={!pasteText.trim()}>
+                <Send className="h-4 w-4" /> Process transcript
+              </Button>
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Extracted data points */}
+          {result && (
+            <div className="space-y-4">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                  Data points extracted for cohorts
+                </div>
+                {Object.keys(result.attributes).length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No structured data points detected.</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(result.attributes).map(([k, v]) => (
+                      <Badge key={k} variant="accent" className="text-[11px]">
+                        {formatLabel(k)}: {v}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                  Masked transcript
+                </div>
+                <div className="max-h-64 overflow-auto rounded-md border border-border bg-secondary/20 p-3 text-sm leading-relaxed whitespace-pre-wrap">
+                  {result.masked}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Prescription shortcuts — visible as soon as not actively recording */}
+          {!recording && (
+            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+              <Button size="sm" onClick={() => setShowRxRecorder(v => !v)}>
+                <Mic className="h-4 w-4" />
+                {showRxRecorder ? "Close prescription" : "Start prescription"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onWriteRx}>
+                Open Rx tab →
+              </Button>
+            </div>
+          )}
+
+          {showRxRecorder && (
+            <div className="border-t border-border pt-3">
+              <AddPrescriptionForm
+                patient={portfolio.patient}
+                weightText={
+                  portfolio.attributes.find(a => a.key === "weight_kg")?.value
+                    ? `${portfolio.attributes.find(a => a.key === "weight_kg")!.value} kg`
+                    : null
+                }
+                onSaved={() => { setShowRxRecorder(false); onSaved(); }}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Known data points + past consultations */}
+      {portfolio.attributes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Known data points</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {portfolio.attributes.map((a) => (
+                <Badge key={a.id} variant="outline" className="text-[11px]">
+                  {formatLabel(a.key)}: {a.value}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {portfolio.consultations.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Past consultations</CardTitle>
+            <CardDescription>{portfolio.consultations.length} on file · transcripts masked</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {portfolio.consultations.map((c) => (
+              <details key={c.id} className="rounded-md border border-border">
+                <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">
+                  {c.created_at}{c.duration_sec ? ` · ${fmtClock(c.duration_sec)}` : ""}
+                </summary>
+                <div className="px-3 py-2 text-sm whitespace-pre-wrap bg-secondary/20 leading-relaxed">
+                  {c.transcript_masked}
+                </div>
+              </details>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -708,87 +1172,113 @@ function stripIds(obj: any) {
 
 // ---- Prescriptions ---------------------------------------------------------
 
-type RxItem = { name: string; instructions: string; duration_days: number };
+const emptyRow = (): RxRow => ({
+  problem: "",
+  problem_type: null,
+  product: "",
+  product_detail: null,
+  dosage: "",
+  dosage_detail: null,
+  cost: null,
+});
 
 function PrescriptionsPane({
   portfolio,
+  weightText,
   onSaved,
 }: {
   portfolio: PatientPortfolio;
+  weightText: string | null;
   onSaved: () => void;
 }) {
-  const [showAdd, setShowAdd] = useState(false);
+  const [showCustom, setShowCustom] = useState(false);
+  const [generating, startGenerate] = useTransition();
+  const patient = portfolio.patient;
+  const past = portfolio.prescriptions;
+
+  const generate = () => {
+    startGenerate(async () => {
+      await fetch(`/api/patients/${patient.id}/prescriptions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: SAMPLE_RX.items,
+          clinical_recommendation: SAMPLE_RX.clinical_recommendation,
+          dispensing_fee_inr: SAMPLE_RX.dispensing_fee_inr,
+          source_type: "text",
+        }),
+      });
+      onSaved();
+    });
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant={showAdd ? "secondary" : "outline"} size="sm" onClick={() => setShowAdd((v) => !v)}>
-          {showAdd ? "Cancel" : "+ Add Prescription"}
+      <div className="flex justify-end gap-2">
+        <Button variant={showCustom ? "secondary" : "ghost"} size="sm" onClick={() => setShowCustom((v) => !v)}>
+          {showCustom ? "Cancel" : "Custom"}
+        </Button>
+        <Button size="sm" onClick={generate} disabled={generating}>
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+          Generate prescription
         </Button>
       </div>
 
-      {showAdd && (
+      {showCustom && (
         <AddPrescriptionForm
-          patientId={portfolio.patient.id}
-          onSaved={() => { setShowAdd(false); onSaved(); }}
+          patient={patient}
+          weightText={weightText}
+          onSaved={() => { setShowCustom(false); onSaved(); }}
         />
       )}
 
-      {portfolio.prescriptions.length === 0 && !showAdd ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No prescriptions on file.
-          </CardContent>
-        </Card>
+      {past.length === 0 ? (
+        // No saved prescriptions yet — always show the prescription document.
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Prescription</span>
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
+          <PrescriptionDocument patient={patient} items={[]} weightText={weightText} />
+        </div>
       ) : (
-        <div className="space-y-3">
-          {portfolio.prescriptions.map((rx: any) => (
-            <Card key={rx.id}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{rx.created_at}</span>
-                    {rx.source_type && rx.source_type !== "text" && (
-                      <Badge variant="outline" className="capitalize">{rx.source_type}</Badge>
-                    )}
-                  </div>
-                  {rx.doctor_name && <Badge variant="outline">{rx.doctor_name}</Badge>}
-                </div>
-                {rx.regimen_notes && (
-                  <div className="text-sm mb-3 italic text-muted-foreground">{rx.regimen_notes}</div>
+        <div className="space-y-6">
+          <div className="text-sm font-semibold">Past prescriptions ({past.length})</div>
+          {past.map((rx: any) => (
+            <div key={rx.id} className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{rx.created_at}</span>
+                {rx.source_type && rx.source_type !== "text" && (
+                  <Badge variant="outline" className="capitalize">{rx.source_type}</Badge>
                 )}
-                {rx.image_path && (
-                  <div className="mb-3">
+              </div>
+              {rx.image_path ? (
+                <Card>
+                  <CardContent className="p-5">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/${rx.image_path}`}
                       alt="Prescription scan"
                       className="max-h-64 rounded-md border border-border object-contain"
                     />
-                  </div>
-                )}
-                {rx.items?.length > 0 && (
-                  <Table>
-                    <THead>
-                      <TR>
-                        <TH>Item</TH>
-                        <TH>Instructions</TH>
-                        <TH>Days</TH>
-                      </TR>
-                    </THead>
-                    <TBody>
-                      {rx.items.map((it: any, i: number) => (
-                        <TR key={i}>
-                          <TD className="font-medium">{it.name}</TD>
-                          <TD className="text-muted-foreground">{it.instructions}</TD>
-                          <TD>{it.duration_days}</TD>
-                        </TR>
-                      ))}
-                    </TBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                    {rx.regimen_notes && (
+                      <div className="mt-3 text-sm italic text-muted-foreground">{rx.regimen_notes}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <PrescriptionDocument
+                  patient={patient}
+                  clinicalRecommendation={rx.clinical_recommendation ?? rx.regimen_notes}
+                  items={rx.items ?? []}
+                  dispensingFeeInr={rx.dispensing_fee_inr}
+                  createdAt={rx.created_at}
+                  weightText={weightText}
+                />
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -920,303 +1410,280 @@ function SummaryPane({ patientId }: { patientId: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Prescription form — recording-first, identical feel to consultation recorder
+// ---------------------------------------------------------------------------
 
-type AddMode = "type" | "voice" | "scan";
-type VoicePhase = "record" | "parsing" | "review";
+type RxPhase = "idle" | "recording" | "paused" | "parsing" | "review" | "saved";
 
-function AddPrescriptionForm({ patientId, onSaved }: { patientId: number; onSaved: () => void }) {
-  const [mode, setMode] = useState<AddMode>("voice");
-  // shared items (used by Type mode and Voice review phase)
-  const [items, setItems] = useState<RxItem[]>([{ name: "", instructions: "", duration_days: 0 }]);
-  const [regimenNotes, setRegimenNotes] = useState("");
-  // voice-specific
-  const [voicePhase, setVoicePhase] = useState<VoicePhase>("record");
-  const [voiceText, setVoiceText] = useState("");
-  const [interimText, setInterimText] = useState("");
-  const [recording, setRecording] = useState(false);
-  // scan
-  const [scanFile, setScanFile] = useState<File | null>(null);
-  const [scanPreview, setScanPreview] = useState<string | null>(null);
+function AddPrescriptionForm({
+  patient,
+  weightText,
+  onSaved,
+}: {
+  patient: Patient & { home_branch_name?: string };
+  weightText: string | null;
+  onSaved: () => void;
+}) {
+  const [phase, setPhase] = useState<RxPhase>("idle");
+  const [elapsed, setElapsed] = useState(0);
+  const [transcript, setTranscript] = useState("");
+  const [items, setItems] = useState<RxRow[]>([emptyRow()]);
+  const [clinicalRec, setClinicalRec] = useState("");
+  const [rxError, setRxError] = useState<string | null>(null);
+  const [savedRx, setSavedRx] = useState<any | null>(null);
+  const [typeMode, setTypeMode] = useState(false);
   const [pending, start] = useTransition();
-  const [parsing, startParse] = useTransition();
-  const recognitionRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mrRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const switchMode = (m: AddMode) => {
-    setMode(m);
-    setVoicePhase("record");
-    setVoiceText("");
-    setInterimText("");
-    setRecording(false);
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setItems([{ name: "", instructions: "", duration_days: 0 }]);
-  };
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SR) { alert("Speech recognition not supported in this browser. Use Chrome or Safari."); return; }
-      const rec = new SR();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = "en-IN";
-      rec.onresult = (e: any) => {
-        let interim = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) {
-            setVoiceText(t => t + (t ? " " : "") + e.results[i][0].transcript);
-            setInterimText("");
-          } else {
-            interim += e.results[i][0].transcript;
-          }
+  const startRecording = async () => {
+    setRxError(null);
+    setTypeMode(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        stream.getTracks().forEach(t => t.stop());
+        if (!chunksRef.current.length) { setRxError("No audio captured — try again."); setPhase("idle"); return; }
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        setPhase("parsing");
+        try {
+          const fd = new FormData();
+          fd.append("audio", blob, "rx.webm");
+          const txRes = await fetch("/api/transcribe", { method: "POST", body: fd });
+          const txData = await txRes.json();
+          const text: string = txData.transcript ?? "";
+          setTranscript(text);
+          if (!text.trim()) { setRxError("No speech detected — try again."); setPhase("idle"); return; }
+          const parseRes = await fetch("/api/prescriptions/parse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ voice_text: text }),
+          });
+          const parseData = await parseRes.json();
+          setItems(Array.isArray(parseData.items) && parseData.items.length > 0 ? parseData.items : [emptyRow()]);
+          if (parseData.clinical_recommendation) setClinicalRec(parseData.clinical_recommendation);
+          setPhase("review");
+        } catch (err: any) {
+          setRxError(err?.message ?? "Processing failed — please try again.");
+          setPhase("idle");
         }
-        setInterimText(interim);
       };
-      rec.onend = () => { setRecording(false); setInterimText(""); };
-      recognitionRef.current = rec;
-    }
-    if (recording) {
-      recognitionRef.current.stop();
-      setRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setRecording(true);
+      mrRef.current = mr;
+      mr.start(1000);
+      setElapsed(0);
+      setPhase("recording");
+      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+    } catch {
+      setRxError("Could not access microphone — check browser permissions.");
     }
   };
 
-  const parseWithAI = () => {
-    if (!voiceText.trim()) return;
-    recognitionRef.current?.stop();
-    setRecording(false);
-    startParse(async () => {
-      setVoicePhase("parsing");
-      const res = await fetch("/api/prescriptions/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice_text: voiceText }),
-      });
-      const data = await res.json();
-      const parsed: RxItem[] = Array.isArray(data.items) && data.items.length > 0
-        ? data.items
-        : [{ name: "", instructions: "", duration_days: 0 }];
-      setItems(parsed);
-      setVoicePhase("review");
-    });
+  const pauseRecording = () => {
+    mrRef.current?.pause();
+    setPhase("paused");
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   };
+  const resumeRecording = () => {
+    mrRef.current?.resume();
+    setPhase("recording");
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+  };
+  const endRecording = () => { mrRef.current?.stop(); };
 
-  const addItem = () => setItems(prev => [...prev, { name: "", instructions: "", duration_days: 0 }]);
-  const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, field: keyof RxItem, val: string | number) =>
+  const updateItem = (i: number, field: keyof RxRow, val: any) =>
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: val } : it));
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    setScanFile(f);
-    setScanPreview(f ? URL.createObjectURL(f) : null);
-  };
-
-  const submit = () => {
+  const save = () => {
     start(async () => {
-      if (mode === "scan" && scanFile) {
-        const fd = new FormData();
-        fd.append("file", scanFile);
-        fd.append("regimen_notes", regimenNotes);
-        await fetch(`/api/patients/${patientId}/prescriptions`, { method: "POST", body: fd });
-      } else {
-        await fetch(`/api/patients/${patientId}/prescriptions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: items.filter(it => it.name),
-            regimen_notes: regimenNotes || null,
-            source_type: mode,
-          }),
-        });
-      }
-      onSaved();
+      const res = await fetch(`/api/patients/${patient.id}/prescriptions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.filter(it => it.product.trim()),
+          clinical_recommendation: clinicalRec || null,
+          source_type: "voice",
+        }),
+      });
+      const data = await res.json();
+      setSavedRx(data.prescription);
+      setPhase("saved");
     });
   };
 
-  const canSubmit = mode === "scan"
-    ? !!scanFile
-    : items.some(it => it.name.trim());
+  const cellCls = "rounded-md border border-input bg-background px-2.5 py-1.5 text-sm w-full";
 
-  // Shared item editor grid (Type mode + Voice review phase)
-  // NOTE: rendered as JSX variable, NOT a component, to preserve input focus across re-renders
-  const itemEditorJSX = (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_1fr_72px_28px] gap-2 px-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Item / Medicine</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Instructions</span>
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Days</span>
-        <span />
+  // ── Saved ──────────────────────────────────────────────────────────────────
+  if (phase === "saved" && savedRx) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" /> Prescription saved
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+            <Button size="sm" onClick={onSaved}>Done</Button>
+          </div>
+        </div>
+        <PrescriptionDocument
+          patient={patient}
+          clinicalRecommendation={savedRx.clinical_recommendation}
+          items={savedRx.items ?? []}
+          dispensingFeeInr={savedRx.dispensing_fee_inr}
+          createdAt={savedRx.created_at}
+          weightText={weightText}
+        />
       </div>
+    );
+  }
+
+  // ── Item editor (shared between review + type mode) ────────────────────────
+  const itemEditor = (
+    <div className="space-y-2">
       {items.map((it, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_72px_28px] gap-2 items-center">
-          <input
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-            placeholder="e.g. Tretinoin 0.025%"
-            value={it.name}
-            onChange={e => updateItem(i, "name", e.target.value)}
-          />
-          <input
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-            placeholder="e.g. Apply at night"
-            value={it.instructions}
-            onChange={e => updateItem(i, "instructions", e.target.value)}
-          />
-          <input
-            type="number"
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-            placeholder="30"
-            value={it.duration_days || ""}
-            onChange={e => updateItem(i, "duration_days", Number(e.target.value))}
-          />
-          <button onClick={() => removeItem(i)} className="text-muted-foreground hover:text-destructive text-lg leading-none text-center">×</button>
+        <div key={i} className="rounded-md border border-border p-3 space-y-2 bg-card">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Medicine {i + 1}</span>
+            <button onClick={() => setItems(prev => prev.filter((_, idx) => idx !== i))}
+              className="text-muted-foreground hover:text-destructive text-lg leading-none px-1">×</button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className={cellCls} placeholder="Problem / Condition" value={it.problem ?? ""}
+              onChange={e => updateItem(i, "problem", e.target.value)} />
+            <input className={cellCls} placeholder="Medicine / Product name" value={it.product}
+              onChange={e => updateItem(i, "product", e.target.value)} />
+            <input className={cellCls} placeholder="Dosage (e.g. Apply nightly)" value={it.dosage}
+              onChange={e => updateItem(i, "dosage", e.target.value)} />
+            <input type="number" className={cellCls} placeholder="Cost ₹ (optional)" value={it.cost ?? ""}
+              onChange={e => updateItem(i, "cost", e.target.value === "" ? null : Number(e.target.value))} />
+          </div>
         </div>
       ))}
-      <Button variant="secondary" size="sm" onClick={addItem}>+ Add item</Button>
+      <Button variant="secondary" size="sm" onClick={() => setItems(prev => [...prev, emptyRow()])}>
+        + Add medicine
+      </Button>
     </div>
   );
 
   return (
-    <Card className="border-accent/30">
-      <CardHeader>
-        <CardTitle className="text-base">New Prescription</CardTitle>
-        <div className="flex gap-2 mt-2">
-          {(["voice", "type", "scan"] as AddMode[]).map(m => (
-            <button key={m} onClick={() => switchMode(m)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                mode === m ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
-              }`}>
-              {m === "voice" ? "🎙 Voice" : m === "type" ? "⌨ Type" : "📷 Scan"}
-            </button>
-          ))}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
 
-        {/* ── VOICE MODE ── */}
-        {mode === "voice" && voicePhase === "record" && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Tap the microphone and dictate the prescription naturally.<br />
-              e.g. <em>"Tretinoin 0.025 cream, apply once at night, 30 days. Clindamycin gel, apply twice daily, 14 days."</em>
-            </p>
-
-            {/* Big mic button */}
-            <div className="flex flex-col items-center gap-3 py-4">
-              <button
-                onClick={toggleRecording}
-                className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition-all ${
-                  recording
-                    ? "bg-destructive scale-110 animate-pulse"
-                    : "bg-primary hover:bg-primary/90"
-                }`}
-              >
-                {recording ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
-              </button>
-              <span className="text-xs text-muted-foreground">
-                {recording ? "Recording… tap to stop" : "Tap to start recording"}
-              </span>
-            </div>
-
-            {/* Live transcript */}
-            {(voiceText || interimText) && (
-              <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm leading-relaxed min-h-[60px]">
-                <span>{voiceText}</span>
-                {interimText && <span className="text-muted-foreground italic"> {interimText}</span>}
-              </div>
-            )}
-            {voiceText && (
-              <div className="flex gap-2">
-                <Button onClick={parseWithAI} disabled={parsing} className="flex-1">
-                  {parsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Parse with AI →
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => { setVoiceText(""); setInterimText(""); }}>
-                  Clear
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {mode === "voice" && voicePhase === "parsing" && (
-          <div className="flex flex-col items-center gap-3 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin text-accent" />
-            Parsing prescription with AI…
-          </div>
-        )}
-
-        {mode === "voice" && voicePhase === "review" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">Review &amp; edit parsed items</p>
-              <button
-                onClick={() => { setVoicePhase("record"); setVoiceText(""); }}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
-                ← Re-dictate
-              </button>
-            </div>
-            {/* Transcript reference */}
-            <details className="rounded-md border border-border">
-              <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">Original transcript</summary>
-              <div className="px-3 py-2 text-xs text-foreground/80 bg-secondary/20">{voiceText}</div>
-            </details>
-            itemEditorJSX
-          </div>
-        )}
-
-        {/* ── TYPE MODE ── */}
-        {mode === "type" && itemEditorJSX}
-
-        {/* ── SCAN MODE ── */}
-        {mode === "scan" && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Upload a photo or scan of a paper prescription.</p>
-            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onFileChange} />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-secondary/30 py-8 text-sm text-muted-foreground hover:border-accent hover:bg-accent/5 transition-colors cursor-pointer"
-            >
-              <span className="text-2xl">📷</span>
-              {scanFile ? scanFile.name : "Tap to choose photo or PDF"}
-            </button>
-            {scanPreview && (
-              <img src={scanPreview} alt="Preview" className="max-h-56 rounded-md border border-border object-contain w-full" />
-            )}
-            {scanFile && (
-              <p className="text-xs text-muted-foreground">{scanFile.name} · {(scanFile.size / 1024).toFixed(1)} KB</p>
-            )}
-          </div>
-        )}
-
-        {/* Regimen notes — all modes */}
-        {(mode !== "voice" || voicePhase === "review") && (
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
-              Regimen notes (optional)
-            </label>
-            <Textarea
-              value={regimenNotes}
-              onChange={e => setRegimenNotes(e.target.value)}
-              placeholder="e.g. Apply sunscreen every morning, retinol only at night"
-              rows={2}
-            />
-          </div>
-        )}
-
-        {/* Save button — shown when there's something to save */}
-        {(mode !== "voice" || voicePhase === "review") && (
-          <Button onClick={submit} disabled={pending || !canSubmit}>
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Save prescription
+      {/* ── Idle: big record button ── */}
+      {phase === "idle" && !typeMode && (
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-secondary/20 py-8 px-4">
+          <p className="text-xs text-muted-foreground text-center max-w-xs">
+            Speak the prescription naturally — problem, medicine name, dosage, and any lifestyle advice.<br />
+            <span className="text-foreground/50 not-italic">
+              e.g. "Melasma — Hydroquinone 4% cream, thin layer every night. SPF 50 daily."
+            </span>
+          </p>
+          <Button size="lg" onClick={startRecording} className="gap-2 px-10 text-base h-12">
+            <Mic className="h-5 w-5" /> Start recording
           </Button>
-        )}
-      </CardContent>
-    </Card>
+          {rxError && <p className="text-sm text-destructive text-center">{rxError}</p>}
+          <button onClick={() => setTypeMode(true)}
+            className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
+            Type manually instead
+          </button>
+        </div>
+      )}
+
+      {/* ── Active recording / paused ── */}
+      {(phase === "recording" || phase === "paused") && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3">
+          <span className={`h-3 w-3 rounded-full bg-destructive shrink-0 ${phase === "recording" ? "animate-pulse" : ""}`} />
+          <span className="text-sm font-medium text-destructive flex-1">
+            {phase === "paused" ? "Paused" : "Recording prescription"} · {fmtClock(elapsed)}
+          </span>
+          <div className="flex gap-2">
+            {phase === "paused" ? (
+              <Button size="sm" variant="outline" onClick={resumeRecording}>
+                <Play className="h-4 w-4" /> Resume
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" onClick={pauseRecording}>
+                <Pause className="h-4 w-4" /> Pause
+              </Button>
+            )}
+            <Button size="sm" variant="destructive" onClick={endRecording}>
+              <Square className="h-4 w-4" /> End
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Parsing / transcribing ── */}
+      {phase === "parsing" && (
+        <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+          Transcribing &amp; generating prescription…
+        </div>
+      )}
+
+      {/* ── Type mode ── */}
+      {typeMode && phase === "idle" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">Type prescription</span>
+            <button onClick={() => setTypeMode(false)}
+              className="text-xs text-muted-foreground underline hover:text-foreground">
+              ← Use recording instead
+            </button>
+          </div>
+          {itemEditor}
+          <Button onClick={save} disabled={pending || !items.some(it => it.product.trim())} className="w-full justify-center">
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Save &amp; generate prescription
+          </Button>
+        </div>
+      )}
+
+      {/* ── Review parsed rows ── */}
+      {phase === "review" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Review &amp; confirm</span>
+            <button onClick={() => { setPhase("idle"); setItems([emptyRow()]); setClinicalRec(""); }}
+              className="text-xs text-muted-foreground underline hover:text-foreground">
+              ← Re-record
+            </button>
+          </div>
+          {transcript && (
+            <details className="rounded-md border border-border">
+              <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">
+                Show transcript
+              </summary>
+              <div className="px-3 py-2 text-xs text-foreground/70 bg-secondary/20 whitespace-pre-wrap">{transcript}</div>
+            </details>
+          )}
+          {itemEditor}
+          {clinicalRec && (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                Clinical recommendation
+              </div>
+              <Textarea value={clinicalRec} onChange={e => setClinicalRec(e.target.value)} rows={2} />
+            </div>
+          )}
+          <Button onClick={save} disabled={pending || !items.some(it => it.product.trim())} className="w-full justify-center">
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Save &amp; generate prescription
+          </Button>
+        </div>
+      )}
+
+    </div>
   );
 }

@@ -115,3 +115,68 @@ export async function extractAndSave(
   const tags = await extractTags(rawText);
   return persistTags(patientId, sessionId, rawText, tags);
 }
+
+// ---------------------------------------------------------------------------
+// Flexible cohort data-point extraction from a (PII-masked) consultation.
+// Returns a flat { key: value } map; new keys need no schema change.
+// ---------------------------------------------------------------------------
+
+const ATTR_SYSTEM =
+  "You extract structured patient data points from a dermatology/trichology consultation transcript (Kaya Skin Clinic, India). " +
+  "Output a single FLAT JSON object of key → short string value (join multiple values with commas, no arrays). " +
+  "Only include data points actually stated in the transcript. Use snake_case keys. " +
+  "Do not invent values. Do not include personal identifiers (names, phone, email, address).\n\n" +
+  "Useful keys when present:\n" +
+  "skin_type (oily/dry/combination/normal/sensitive), " +
+  "hair_type (normal/oily/dry/frizzy/fine/thick), " +
+  "hair_condition (thinning/shedding/brittle/healthy), " +
+  "scalp_condition (dry/oily/flaky/sensitive/normal), " +
+  "hair_loss_type (androgenic/telogen_effluvium/alopecia_areata/other), " +
+  "primary_concern (e.g. hair_loss / acne / pigmentation / dry_scalp), " +
+  "secondary_concern, " +
+  "symptoms (comma-separated, e.g. 'dry skin, hair thinning, dandruff'), " +
+  "symptom_duration (e.g. '3 months'), " +
+  "current_medications (comma-separated, e.g. 'minoxidil, biotin'), " +
+  "allergies (comma-separated known allergies), " +
+  "height_cm, weight_kg, age, " +
+  "diet (e.g. vegetarian / protein-deficient / balanced), " +
+  "water_intake (e.g. low / 2 litres daily), " +
+  "sleep_hours, sleep_cycle (regular/irregular), " +
+  "smoking (yes/no/unknown), alcohol (yes/no/unknown), " +
+  "stress_level (high/medium/low), " +
+  "sun_exposure (high/moderate/low), " +
+  "family_history (e.g. male pattern baldness / diabetes), " +
+  "treatment_plan (comma-separated planned treatments, e.g. 'PRP, Minoxidil 5%, Biotin'), " +
+  "follow_up_weeks (e.g. 6), " +
+  "patient_concerns (main concerns the patient voiced, comma-separated).";
+
+export async function extractAttributes(maskedText: string): Promise<Record<string, string>> {
+  let raw: Record<string, any> = {};
+  try {
+    raw = await chatJSON(ATTR_SYSTEM, "Transcript:\n" + maskedText.trim(), 600);
+  } catch {
+    raw = {};
+  }
+  const EMPTY = new Set([
+    "", "none", "n/a", "na", "null", "nil", "-", "unknown", "not mentioned",
+    "not stated", "not specified", "not provided", "not applicable", "no",
+  ]);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw || {})) {
+    if (v == null) continue;
+    const key = String(k).trim().toLowerCase().replace(/\s+/g, "_");
+    const val = typeof v === "object" ? JSON.stringify(v) : String(v).trim();
+    if (key && val && !EMPTY.has(val.toLowerCase())) out[key] = val;
+  }
+  // Lightweight regex backstop so mock/offline mode still surfaces common points.
+  const t = maskedText;
+  const grab = (re: RegExp, key: string, unit = "") => {
+    if (out[key]) return;
+    const m = t.match(re);
+    if (m) out[key] = (m[1] + unit).trim();
+  };
+  grab(/(\d{2,3})\s?(?:kg|kilograms?)\b/i, "weight_kg");
+  grab(/(\d{2,3})\s?(?:cm|centimet)/i, "height_cm");
+  grab(/\b(normal|oily|dry|combination|sensitive)\s+skin\b/i, "skin_type");
+  return out;
+}

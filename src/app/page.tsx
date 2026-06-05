@@ -1,4 +1,4 @@
-import { Building2, Users, CalendarCheck2, TrendingUp, UserCog, ShieldCheck, MapPin, Globe, Sparkles, ArrowRight } from "lucide-react";
+import { Building2, Users, CalendarCheck2, TrendingUp, UserCog, ShieldCheck, MapPin, Globe, Sparkles, ArrowRight, UserCircle } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -6,6 +6,7 @@ import {
   listAllPatients,
   listBranchStats,
   listAllDoctors,
+  listClinicStatus,
 } from "@/lib/db";
 import { llmStatus } from "@/lib/llm";
 import { RECIPES } from "@/lib/cohorts";
@@ -22,6 +23,7 @@ export default function Home() {
   const patients = listAllPatients();
   const branchStats = listBranchStats();
   const doctors = listAllDoctors();
+  const clinicStatuses = listClinicStatus();
 
   // Group branches by zone
   const zoneMap = new Map<string, {
@@ -70,6 +72,83 @@ export default function Home() {
             accent
           />
           <MetricCard label="Total Patients" value={patients.length} />
+        </div>
+      </section>
+
+      {/* ── Clinic readiness (call center view) ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Clinic readiness — call center view
+          </h2>
+          <Link href="/manager/clinic-status" className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors">
+            Update in Manager console <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {clinicStatuses.map((cs) => {
+            const down = cs.appliances.filter((a) => !a.working);
+            const offers = cs.offers.filter((o) => o.active);
+            const issue = !cs.is_open || cs.doctor_on_leave || down.length > 0;
+            return (
+              <Card key={cs.branch_id} className="border border-border/70">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${cs.is_open ? (issue ? "bg-amber-500" : "bg-emerald-500") : "bg-red-500"}`} />
+                      <span className="font-semibold">{cs.branch_name}</span>
+                      <Badge variant={cs.is_open ? "outline" : "destructive"} className="text-[10px]">
+                        {cs.is_open ? "Open" : "Closed"}
+                      </Badge>
+                    </div>
+                    {cs.updated_at && <span className="text-[10px] text-muted-foreground">Updated {cs.updated_at.slice(0, 16)}</span>}
+                  </div>
+                  {cs.status_note && <p className="text-xs text-muted-foreground">{cs.status_note}</p>}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Doctor on duty</div>
+                      {cs.doctor_on_leave ? (
+                        <div className="text-red-600 font-medium">On leave{cs.doctor_leave_note ? ` · ${cs.doctor_leave_note}` : ""}</div>
+                      ) : (
+                        <div className="font-medium">{cs.on_duty_doctor_name ?? <span className="text-amber-600">Not set</span>}</div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Appliances</div>
+                      {down.length === 0 ? (
+                        <div className="text-emerald-600 font-medium">All working</div>
+                      ) : (
+                        <div className="text-red-600 font-medium">{down.length} down</div>
+                      )}
+                    </div>
+                  </div>
+                  {down.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {down.map((a) => (
+                        <span key={a.name} className="rounded bg-red-50 border border-red-100 px-2 py-0.5 text-[11px] text-red-700">
+                          {a.name}{a.note ? ` · ${a.note}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Active offers</div>
+                    {offers.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">None</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {offers.map((o, i) => (
+                          <span key={i} className="rounded bg-rose-50 border border-rose-100 px-2 py-0.5 text-[11px] text-rose-700">
+                            {o.title}{o.discount_pct ? ` (${o.discount_pct}%)` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
@@ -223,6 +302,25 @@ export default function Home() {
 
       {/* ── Staff Roster ── */}
       <StaffRoster doctors={doctors} branches={branchStats} />
+
+      {/* ── Customer Portal ── */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Customer Portal
+        </h2>
+        <Link href="/customer" className="block">
+          <div className="flex items-center gap-4 p-5 rounded-lg border border-border/70 hover:border-accent/40 hover:bg-accent/5 transition-all">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-accent shrink-0">
+              <UserCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="font-semibold text-base">Customer App</div>
+              <div className="text-sm text-muted-foreground mt-0.5">Appointments, prescriptions, progress &amp; loyalty</div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto" />
+          </div>
+        </Link>
+      </section>
     </div>
   );
 }

@@ -93,6 +93,17 @@ export type SkinPhoto = {
   uploaded_by_branch_id: number | null;
 };
 
+// A single row of the structured treatment plan (matches the printed Rx design).
+export type RxRow = {
+  problem: string | null;
+  problem_type: "chronic" | "acute" | null;
+  product: string;
+  product_detail: string | null; // e.g. "10 mg tablet · 30 ct"
+  dosage: string; // e.g. "1 tablet once daily"
+  dosage_detail: string | null; // e.g. "Morning, with water"
+  cost: number | null; // ₹; null = clinic manager to fill later
+};
+
 export type Prescription = {
   id: number;
   patient_id: number;
@@ -100,8 +111,34 @@ export type Prescription = {
   doctor_id: number | null;
   items_json: string;
   regimen_notes: string | null;
+  clinical_recommendation: string | null;
+  dispensing_fee_inr: number | null;
   image_path: string | null;
   source_type: "text" | "voice" | "image";
+  created_at: string;
+};
+
+// Full conversation captured during a consultation.
+export type Consultation = {
+  id: number;
+  patient_id: number;
+  appointment_id: number | null;
+  doctor_id: number | null;
+  transcript_masked: string; // shown in UI ([person] placeholders)
+  transcript_encrypted: string | null; // AES-256-GCM ciphertext of the raw transcript
+  pii_map_encrypted: string | null; // encrypted placeholder→value map
+  duration_sec: number | null;
+  created_at: string;
+};
+
+// Flexible key-value data point extracted from a consultation (latest wins per key).
+export type PatientAttribute = {
+  id: number;
+  patient_id: number;
+  consultation_id: number | null;
+  key: string;
+  value: string;
+  source: string;
   created_at: string;
 };
 
@@ -144,6 +181,34 @@ export type CohortRow = {
   context: Record<string, any>;
 };
 
+export type ClinicAppliance = { name: string; working: boolean; note?: string };
+
+export type ClinicOffer = {
+  title: string;
+  detail?: string;
+  discount_pct?: number | null;
+  valid_till?: string | null;
+  active: boolean;
+};
+
+// Read-model: a branch's live operational readiness for the call center.
+export type ClinicStatus = {
+  branch_id: number;
+  branch_name: string;
+  city: string;
+  manager_name: string | null;
+  is_open: number;
+  status_note: string | null;
+  on_duty_doctor_id: number | null;
+  on_duty_doctor_name: string | null;
+  doctor_on_leave: number;
+  doctor_leave_note: string | null;
+  appliances: ClinicAppliance[];
+  offers: ClinicOffer[];
+  updated_at: string | null;
+  updated_by: string | null;
+};
+
 export type FinancialSummary = {
   package_collection_inr: number;
   package_net_revenue_inr: number;
@@ -172,5 +237,7 @@ export type PatientPortfolio = {
   tags: DoctorTags[];
   notes: RawNote[];
   photos: SkinPhoto[];
-  prescriptions: (Prescription & { items: Array<{ name: string; instructions: string; duration_days: number }>; doctor_name: string | null })[];
+  prescriptions: (Prescription & { items: RxRow[]; doctor_name: string | null })[];
+  consultations: Consultation[];
+  attributes: PatientAttribute[];
 };

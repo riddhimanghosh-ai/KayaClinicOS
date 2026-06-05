@@ -2,37 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X, UserRound, MessageSquare, Search as SearchIcon, BarChart2, CalendarDays } from "lucide-react";
+import { Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X, UserRound, MessageSquare, Search as SearchIcon, BarChart2, CalendarDays, Smartphone, Zap, Brain, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const NAV = [
-  { href: "/", label: "Overview", icon: LayoutDashboard, role: null },
+  { href: "/", label: "Zone Overview", icon: LayoutDashboard, role: null },
   { href: "/manager", label: "Clinic Manager", icon: Activity, role: "Manager", color: "text-blue-600" },
   { href: "/doctor", label: "Doctor Console", icon: Stethoscope, role: "Doctor", color: "text-emerald-600" },
-  { href: "/patient", label: "Patient Portal", icon: Sparkles, role: "Patient", color: "text-accent" },
+  { href: "/customer", label: "Customer App", icon: Smartphone, role: "Customer", color: "text-violet-600" },
 ];
 
 const MANAGER_SUBNAV = [
-  { href: "/manager", label: "Cohort Engine", icon: Sparkles },
-  { href: "/manager/appointments", label: "Appointment (Additional feature)", icon: CalendarDays },
-  { href: "/manager/sessions", label: "Sessions", icon: BarChart2 },
-  { href: "/manager/sales", label: "Sales Records", icon: BarChart2 },
-  { href: "/manager/patients", label: "Patient View", icon: UserRound },
-  { href: "/manager/whatsapp", label: "WhatsApp Queue", icon: MessageSquare },
-  { href: "/manager/catalog", label: "Catalog", icon: SearchIcon },
+  { href: "/manager/today",         label: "Daily Ops",          icon: Zap },
+  { href: "/manager/appointments",  label: "Schedule Board",     icon: CalendarDays },
+  { href: "/manager/ops",           label: "Treatment & FnO",    icon: FlaskConical },
+  { href: "/manager",               label: "Cohorts & Outreach", icon: Sparkles },
+  { href: "/manager/patients",      label: "Patients",           icon: UserRound },
+  { href: "/manager/catalog",       label: "Catalog",            icon: SearchIcon },
+  { href: "/manager/clinic-status", label: "Clinic Status",      icon: Activity },
+  { href: "/manager/ai",            label: "Insights",           icon: Brain },
 ];
 
 const ROLE_COLORS: Record<string, string> = {
   "/manager": "bg-blue-50 border-blue-100",
   "/doctor":  "bg-emerald-50 border-emerald-100",
-  "/patient": "bg-orange-50 border-orange-100",
+  "/customer": "bg-violet-50 border-violet-100",
 };
 
 const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
   "/manager": { label: "Manager Portal", cls: "bg-blue-100 text-blue-700" },
   "/doctor":  { label: "Doctor Portal",  cls: "bg-emerald-100 text-emerald-700" },
-  "/patient": { label: "Patient Portal", cls: "bg-orange-100 text-orange-700" },
+  "/customer": { label: "Customer App",  cls: "bg-violet-100 text-violet-700" },
 };
 
 function NavLinks({ onClick }: { onClick?: () => void }) {

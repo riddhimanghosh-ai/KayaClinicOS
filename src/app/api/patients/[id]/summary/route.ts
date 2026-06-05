@@ -67,8 +67,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         noteTexts: [], rxLines: [], tagLine: null,
       });
     }
-    const itemsStr = rx.items?.map((it: any) => `${it.name} (${it.instructions})`).join(", ") ?? "";
-    const line = [itemsStr, rx.regimen_notes].filter(Boolean).join(" — ");
+    const itemsStr = rx.items?.map((it: any) => {
+      const name = it.product ?? it.name ?? "";
+      const dose = it.dosage ?? it.instructions ?? "";
+      return dose ? `${name} (${dose})` : name;
+    }).filter(Boolean).join(", ") ?? "";
+    const line = [itemsStr, rx.clinical_recommendation ?? rx.regimen_notes].filter(Boolean).join(" — ");
     if (line) visitMap.get(date)!.rxLines.push(line);
   }
 

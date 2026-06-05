@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
   <rect width="320" height="320" fill="rgb(255,206,192)" />
-  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Astha Mundhra</text>
+  <text x="16" y="32" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="16" font-weight="600" fill="#3C1E14">Aanya Sharma</text>
   <text x="16" y="56" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Visit: 2026-03-22</text>
   <text x="16" y="76" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Region: left_cheek</text>
   <text x="16" y="96" font-family="system-ui,Helvetica,Arial,sans-serif" font-size="13" fill="#3C1E14">Severity: Mild</text>
-  <circle cx="105" cy="176" r="7" fill="#AA3232" opacity="0.85" /><circle cx="234" cy="286" r="4" fill="#AA3232" opacity="0.85" /><circle cx="72" cy="199" r="6" fill="#AA3232" opacity="0.85" /><circle cx="257" cy="278" r="3" fill="#AA3232" opacity="0.85" /><circle cx="141" cy="294" r="3" fill="#AA3232" opacity="0.85" /><circle cx="45" cy="289" r="4" fill="#AA3232" opacity="0.85" />
+  <circle cx="179" cy="250" r="5" fill="#AA3232" opacity="0.85" /><circle cx="203" cy="270" r="3" fill="#AA3232" opacity="0.85" /><circle cx="273" cy="273" r="6" fill="#AA3232" opacity="0.85" /><circle cx="186" cy="219" r="5" fill="#AA3232" opacity="0.85" /><circle cx="276" cy="218" r="5" fill="#AA3232" opacity="0.85" /><circle cx="127" cy="233" r="4" fill="#AA3232" opacity="0.85" />
 </svg>

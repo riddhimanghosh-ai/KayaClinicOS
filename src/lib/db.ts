@@ -17,6 +17,9 @@ import type {
   CheckIn,
   FinancialSummary,
   PatientPortfolio,
+  ClinicStatus,
+  ClinicAppliance,
+  ClinicOffer,
 } from "./types";
 
 export const ROOT = path.resolve(process.cwd());
@@ -51,6 +54,59 @@ export function db(): Database.Database {
   _db = handle;
   initSchema(handle);
   return handle;
+}
+
+// ---------------------------------------------------------------------------
+// Demo consultation — always present, based on the real Kaya hair-loss case.
+// PII is already masked; this is what the doctor would see in the UI.
+// ---------------------------------------------------------------------------
+const DEMO_TRANSCRIPT = `[person]: Hello doctor, I've been losing a lot of hair recently and my scalp is very dry and flaky.
+
+Doctor: I see. Let's examine the scalp. How long has this been going on?
+
+[person]: About 4–5 months. I've tried different shampoos and I was using minoxidil sometimes — around 0.5 to 1% — but not consistently.
+
+Doctor: I can see clear androgenic pattern hair loss. The scalp is dry as well. Any family history?
+
+[person]: Yes, my father had early hair loss.
+
+Doctor: Makes sense. Any supplements or medications currently?
+
+[person]: I've been taking biotin on and off and tried some other oral supplements, but haven't seen much improvement.
+
+Doctor: Here's our treatment plan: we'll start PRP/GFC therapy — three sessions about 20–25 days apart, then monthly maintenance as needed. You must apply Minoxidil at 5% concentration every single day — consistency is critical. Add oral biotin daily and an anti-hair-fall serum. For the dry scalp, switch to a gentle sulfate-free shampoo and a moisturising cleanser. Apply SPF 30+ on exposed skin daily.
+
+[person]: How long before I can expect results?
+
+Doctor: PRP typically shows results in 3–6 months. Minoxidil takes 4–6 months of consistent use. Come back in 6–8 weeks so we can assess the response. We can also arrange your sessions at our Mumbai clinic if that's more convenient.
+
+[person]: Okay. What is the cost per PRP session?
+
+Doctor: Our coordinator will give you the full pricing breakdown for the GFC/PRP package.`;
+
+// ---------------------------------------------------------------------------
+// Purge all session (non-seed) consultations and their attributes.
+// Called on every /doctor page render so recordings from a previous session
+// don't accumulate. Seed consultation is always preserved.
+// ---------------------------------------------------------------------------
+export function purgeSessionConsultations(): void {
+  const d = db();
+  try {
+    d.exec(`
+      DELETE FROM patient_attributes
+      WHERE consultation_id IN (
+        SELECT id FROM consultations WHERE is_seed IS NOT 1
+      )
+    `);
+    d.exec("DELETE FROM consultations WHERE is_seed IS NOT 1");
+  } catch {}
+}
+
+export function purgeSessionPrescriptions(): void {
+  const d = db();
+  try {
+    d.exec("DELETE FROM prescriptions WHERE is_seed IS NOT 1");
+  } catch {}
 }
 
 export const SCHEMA = `
@@ -213,9 +269,63 @@ CREATE TABLE IF NOT EXISTS appointments (
     status TEXT NOT NULL DEFAULT 'booked',
     contact_booking_number TEXT,
     notes TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    referred_by TEXT,
+    duration_minutes INTEGER DEFAULT 45,
+    disposition TEXT,
+    sub_disposition TEXT,
+    lead_type TEXT DEFAULT 'call',
+    campaign TEXT
 );
 
+CREATE TABLE IF NOT EXISTS practitioner_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  appointment_id INTEGER REFERENCES appointments(id),
+  patient_id INTEGER NOT NULL REFERENCES patients(id),
+  photos_json TEXT DEFAULT '[]',
+  consent_signed INTEGER DEFAULT 0,
+  medical_history TEXT,
+  body_type TEXT,
+  treatment_notes TEXT,
+  started_at TEXT,
+  completed_at TEXT,
+  status TEXT DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS fno_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  appointment_id INTEGER REFERENCES appointments(id),
+  patient_id INTEGER NOT NULL REFERENCES patients(id),
+  service_type TEXT NOT NULL,
+  bom_items_json TEXT DEFAULT '[]',
+  submitted_at TEXT,
+  status TEXT DEFAULT 'pending'
+);
+
+CREATE TABLE IF NOT EXISTS consultations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES patients(id),
+  appointment_id INTEGER REFERENCES appointments(id),
+  doctor_id INTEGER REFERENCES doctors(id),
+  transcript_masked TEXT NOT NULL,
+  transcript_encrypted TEXT,
+  pii_map_encrypted TEXT,
+  duration_sec INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS patient_attributes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES patients(id),
+  consultation_id INTEGER REFERENCES consultations(id),
+  key TEXT NOT NULL,
+  value TEXT,
+  source TEXT DEFAULT 'consultation',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_attributes_patient ON patient_attributes(patient_id, key);
 CREATE INDEX IF NOT EXISTS idx_sessions_patient ON sessions_consumed(patient_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_packages_patient ON packages_purchased(patient_id);
 CREATE INDEX IF NOT EXISTS idx_tags_patient ON doctor_tags(patient_id, created_at);
@@ -229,6 +339,34 @@ export function initSchema(handle?: Database.Database): void {
   // Additive migrations — safe to run multiple times
   try { d.exec("ALTER TABLE prescriptions ADD COLUMN image_path TEXT"); } catch {}
   try { d.exec("ALTER TABLE prescriptions ADD COLUMN source_type TEXT DEFAULT 'text'"); } catch {}
+  try { d.exec("ALTER TABLE prescriptions ADD COLUMN clinical_recommendation TEXT"); } catch {}
+  try { d.exec("ALTER TABLE prescriptions ADD COLUMN dispensing_fee_inr INTEGER DEFAULT 60"); } catch {}
+  try { d.exec("ALTER TABLE prescriptions ADD COLUMN is_seed INTEGER DEFAULT 0"); } catch {}
+
+  // Seed one demo prescription (hair-loss case from the provided JSON).
+  try {
+    const rxSeedExists = d.prepare("SELECT 1 FROM prescriptions WHERE is_seed = 1 LIMIT 1").get() as any;
+    if (!rxSeedExists) {
+      const firstPatient = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 1").get() as any;
+      if (firstPatient) {
+        const demoItems = JSON.stringify([
+          { problem: "हेयर लॉस", problem_type: "chronic", product: "मिनॉक्सिडेल (Minoxidil 5%)", product_detail: "Topical solution · 60 ml", dosage: "Apply 1 ml twice daily to affected scalp", dosage_detail: "Morning & evening · leave-on, do not rinse", cost: null },
+          { problem: "हेयर लॉस", problem_type: "chronic", product: "GFC Therapy (Growth Factor Concentrate)", product_detail: "In-clinic procedure", dosage: "1 session every 20–25 days · 3 sessions", dosage_detail: "Then monthly maintenance as needed", cost: null },
+          { problem: "हेयर लॉस", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "Apply 3–4 drops to scalp nightly", dosage_detail: "Massage gently · leave-on overnight", cost: null },
+          { problem: "Skin Renewal", problem_type: null, product: "Peeling Session", product_detail: "In-clinic chemical peel", dosage: "1 session every 3–4 weeks", dosage_detail: "Follow post-peel care instructions", cost: null },
+          { problem: "Skin Glow", problem_type: null, product: "Gluta Glow Face Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to cleansed face AM & PM", dosage_detail: "Before moisturiser", cost: null },
+          { problem: "Hyperpigmentation", problem_type: "chronic", product: "Hyperpigmentation Reducing Face Serum", product_detail: "30 ml", dosage: "Apply to affected areas morning & evening", dosage_detail: "After cleansing · before SPF in the morning", cost: null },
+          { problem: "Skin Glow & Hydration", problem_type: null, product: "Kaya NUTRA+ Glutathione Mouth Melt Powder", product_detail: "1 sachet per dose", dosage: "1 sachet daily · dissolve under tongue", dosage_detail: "Best taken on an empty stomach", cost: null },
+          { problem: "Skin Brightening", problem_type: null, product: "Kaya Brightening Night Cream", product_detail: "50 ml", dosage: "Apply to face every night as the last step", dosage_detail: "After serum · avoid eye area", cost: null },
+        ]);
+        const demoClinical = "Patient presents with androgenic (pattern) alopecia with dry scalp, and concurrent skin concerns (hyperpigmentation, dullness). Plan: PRP/GFC therapy — 3 sessions at 20–25 day intervals, then monthly maintenance. Minoxidil 5% to be applied consistently twice daily. Peeling sessions for skin renewal. Complete home-care regimen as prescribed below. Increase water intake, eat a protein-rich balanced diet, apply SPF 30+ daily. Follow-up in 6–8 weeks to assess response.";
+        d.prepare(`
+          INSERT INTO prescriptions (patient_id, items_json, clinical_recommendation, dispensing_fee_inr, source_type, is_seed)
+          VALUES (?, ?, ?, 60, 'voice', 1)
+        `).run(firstPatient.id, demoItems, demoClinical);
+      }
+    }
+  } catch {}
   try { d.exec("ALTER TABLE whatsapp_queue ADD COLUMN scheduled_at TEXT"); } catch {}
   try { d.exec("ALTER TABLE whatsapp_queue ADD COLUMN edited_body TEXT"); } catch {}
   try { d.exec("ALTER TABLE patients ADD COLUMN guest_code TEXT"); } catch {}
@@ -244,6 +382,10 @@ export function initSchema(handle?: Database.Database): void {
   try { d.exec("ALTER TABLE sessions_consumed ADD COLUMN session_type TEXT DEFAULT 'treatment'"); } catch {}
   try { d.exec("ALTER TABLE appointments ADD COLUMN referred_by TEXT"); } catch {}
   try { d.exec("ALTER TABLE appointments ADD COLUMN duration_minutes INTEGER DEFAULT 45"); } catch {}
+  try { d.exec("ALTER TABLE appointments ADD COLUMN disposition TEXT"); } catch {}
+  try { d.exec("ALTER TABLE appointments ADD COLUMN sub_disposition TEXT"); } catch {}
+  try { d.exec("ALTER TABLE appointments ADD COLUMN lead_type TEXT DEFAULT 'call'"); } catch {}
+  try { d.exec("ALTER TABLE appointments ADD COLUMN campaign TEXT"); } catch {}
   try {
     d.exec(`CREATE TABLE IF NOT EXISTS saved_cohorts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -255,6 +397,21 @@ export function initSchema(handle?: Database.Database): void {
       created_at TEXT DEFAULT (datetime('now'))
     )`);
   } catch {}
+  // Per-branch operational readiness published by the clinic manager for the call center.
+  try {
+    d.exec(`CREATE TABLE IF NOT EXISTS clinic_status (
+      branch_id INTEGER PRIMARY KEY REFERENCES branches(id),
+      is_open INTEGER NOT NULL DEFAULT 1,
+      status_note TEXT,
+      on_duty_doctor_id INTEGER REFERENCES doctors(id),
+      doctor_on_leave INTEGER NOT NULL DEFAULT 0,
+      doctor_leave_note TEXT,
+      appliances_json TEXT NOT NULL DEFAULT '[]',
+      offers_json TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT DEFAULT (datetime('now')),
+      updated_by TEXT
+    )`);
+  } catch {}
   // Seed today's appointments if none exist (dev only)
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -263,10 +420,14 @@ export function initSchema(handle?: Database.Database): void {
       const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
       const SERVICES = ["Consultation","Laser Hair Reduction","Carbon Laser Peel","Acne Clearance Program","Q-Switch Laser Toning","Chemical Peel","Consultation","Microneedling for Scars"];
       const TIMES = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30"];
+      const LEAD_TYPES = ['website_form', 'chatbot', 'call', 'referral', 'campaign', 'walk_in'];
+      const DISPOSITIONS = ['New Consultation', 'Follow-up Visit', 'Treatment Session', 'Package Session'];
+      const SUB_DISPS = ['New Patient', 'Existing Patient', 'Re-engagement', 'Referral Patient'];
       patients.forEach((p: any, i: number) => {
         const branchId = i < 4 ? 1 : 2;
-        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number) VALUES (?, ?, 1, ?, ?, 'booked', ?)").run(
-          p.id, branchId, SERVICES[i], `${today} ${TIMES[i]}:00`, `VESC${String(100000 + i * 173)}`
+        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type) VALUES (?, ?, 1, ?, ?, 'booked', ?, ?, ?, ?)").run(
+          p.id, branchId, SERVICES[i], `${today} ${TIMES[i]}:00`, `VESC${String(100000 + i * 173)}`,
+          DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i % LEAD_TYPES.length]
         );
       });
     }
@@ -305,6 +466,23 @@ export function initSchema(handle?: Database.Database): void {
       }
     }
   } catch (_) {}
+
+  // Additive migration: is_seed flag on consultations
+  try { d.exec("ALTER TABLE consultations ADD COLUMN is_seed INTEGER DEFAULT 0"); } catch {}
+
+  // Seed one demo consultation (hair-loss / PRP case) — insert only if no seed exists.
+  try {
+    const seedExists = (d.prepare("SELECT 1 FROM consultations WHERE is_seed = 1 LIMIT 1").get()) as any;
+    if (!seedExists) {
+      const firstPatient = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 1").get() as any;
+      if (firstPatient) {
+        d.prepare(`
+          INSERT INTO consultations (patient_id, transcript_masked, is_seed)
+          VALUES (?, ?, 1)
+        `).run(firstPatient.id, DEMO_TRANSCRIPT);
+      }
+    }
+  } catch {}
 
   // Additive migration: manager_name on branches
   try {
@@ -409,8 +587,27 @@ export function getPatientPortfolio(patientId: number): PatientPortfolio | null 
 
   const prescriptions = prescriptionRows.map((r) => ({
     ...r,
-    items: JSON.parse(r.items_json),
+    items: normalizeRxItems(r.items_json),
   }));
+
+  const consultations = d
+    .prepare(
+      `SELECT * FROM consultations WHERE patient_id = ? ORDER BY created_at DESC`
+    )
+    .all(patientId) as any[];
+
+  // Latest value per key (rows are inserted newest-first by created_at desc).
+  const attrRows = d
+    .prepare(
+      `SELECT * FROM patient_attributes WHERE patient_id = ? ORDER BY created_at DESC`
+    )
+    .all(patientId) as any[];
+  const seen = new Set<string>();
+  const attributes = attrRows.filter((a) => {
+    if (seen.has(a.key)) return false;
+    seen.add(a.key);
+    return true;
+  });
 
   return {
     patient,
@@ -421,7 +618,68 @@ export function getPatientPortfolio(patientId: number): PatientPortfolio | null 
     notes,
     photos,
     prescriptions,
+    consultations,
+    attributes,
   };
+}
+
+// Accepts both the new RxRow[] shape and the legacy {name,instructions,duration_days}[]
+// shape so older seeded prescriptions keep rendering after the schema change.
+function normalizeRxItems(itemsJson: string): any[] {
+  let parsed: any[] = [];
+  try {
+    parsed = JSON.parse(itemsJson || "[]");
+  } catch {
+    parsed = [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.map((it) => {
+    if (it && (it.product !== undefined || it.problem !== undefined)) {
+      return {
+        problem: it.problem ?? null,
+        problem_type: it.problem_type ?? null,
+        product: String(it.product ?? ""),
+        product_detail: it.product_detail ?? null,
+        dosage: String(it.dosage ?? ""),
+        dosage_detail: it.dosage_detail ?? null,
+        cost: it.cost ?? null,
+      };
+    }
+    // Legacy shape
+    const dur = Number(it?.duration_days) || 0;
+    return {
+      problem: null,
+      problem_type: null,
+      product: String(it?.name ?? ""),
+      product_detail: dur ? `${dur} days` : null,
+      dosage: String(it?.instructions ?? ""),
+      dosage_detail: null,
+      cost: null,
+    };
+  });
+}
+
+// Match a prescription product/medicine name against the catalog to auto-fill cost.
+export function lookupCatalogPrice(name: string): number | null {
+  if (!name || !name.trim()) return null;
+  const d = db();
+  const q = name.trim().toLowerCase();
+  const product = d
+    .prepare(`SELECT price_inr FROM products_catalog WHERE lower(name) = ? LIMIT 1`)
+    .get(q) as any;
+  if (product) return product.price_inr;
+  const service = d
+    .prepare(`SELECT price_inr FROM services_catalog WHERE lower(name) = ? LIMIT 1`)
+    .get(q) as any;
+  if (service) return service.price_inr;
+  // Fuzzy: catalog name contained in the spoken product name or vice versa.
+  const pLike = d
+    .prepare(
+      `SELECT price_inr FROM products_catalog WHERE ? LIKE '%' || lower(name) || '%' OR lower(name) LIKE '%' || ? || '%' LIMIT 1`
+    )
+    .get(q, q) as any;
+  if (pLike) return pLike.price_inr;
+  return null;
 }
 
 export function latestTagsFor(patientId: number): DoctorTags | null {
@@ -726,6 +984,10 @@ export type AppointmentRow = {
   notes: string | null;
   referred_by: string | null;
   duration_minutes: number;
+  disposition: string | null;
+  sub_disposition: string | null;
+  lead_type: string | null;
+  campaign: string | null;
   city: string | null;
   state: string | null;
 };
@@ -739,6 +1001,7 @@ export function getAppointments(date: string, branchId?: number): AppointmentRow
            a.service_type, a.appointment_ts, a.status,
            a.contact_booking_number, a.notes, a.referred_by,
            COALESCE(a.duration_minutes, 45) AS duration_minutes,
+           a.disposition, a.sub_disposition, a.lead_type, a.campaign,
            p.city, p.state
     FROM appointments a
     JOIN patients p ON p.id = a.patient_id
@@ -758,6 +1021,81 @@ export function updateAppointmentTime(id: number, appointmentTs: string): void {
 
 export function updateAppointmentStatus(id: number, status: string): void {
   db().prepare("UPDATE appointments SET status = ? WHERE id = ?").run(status, id);
+}
+
+export type ConfirmationQueueRow = {
+  id: number;
+  patient_name: string;
+  phone: string;
+  service_type: string;
+  appointment_ts: string;
+  doctor_name: string | null;
+  branch_name: string;
+  referred_by: string | null;
+  disposition: string | null;
+  sub_disposition: string | null;
+  lead_type: string | null;
+  campaign: string | null;
+  pending_sessions: number;
+  last_visit: string | null;
+};
+
+export function getTodayConfirmationQueue(date: string): ConfirmationQueueRow[] {
+  const d = db();
+  return d.prepare(`
+    SELECT a.id, p.name AS patient_name, p.phone,
+           a.service_type, a.appointment_ts,
+           doc.name AS doctor_name, b.name AS branch_name,
+           a.referred_by, a.disposition, a.sub_disposition, a.lead_type, a.campaign,
+           COALESCE((
+             SELECT SUM(pk.sessions_total - pk.sessions_used)
+             FROM packages_purchased pk
+             WHERE pk.patient_id = p.id AND pk.sessions_used < pk.sessions_total
+           ), 0) AS pending_sessions,
+           (SELECT MAX(s.session_date) FROM sessions_consumed s WHERE s.patient_id = p.id) AS last_visit
+    FROM appointments a
+    JOIN patients p ON p.id = a.patient_id
+    JOIN branches b ON b.id = a.branch_id
+    LEFT JOIN doctors doc ON doc.id = a.doctor_id
+    WHERE date(a.appointment_ts) = ? AND a.status = 'booked'
+    ORDER BY a.appointment_ts ASC
+  `).all(date) as ConfirmationQueueRow[];
+}
+
+export type PendingSessionPatient = {
+  id: number;
+  name: string;
+  phone: string;
+  branch_name: string;
+  pending_sessions: number;
+  last_visit: string | null;
+  days_since_visit: number | null;
+  service_names: string;
+};
+
+export function getPendingSessionPatients(): PendingSessionPatient[] {
+  const d = db();
+  return d.prepare(`
+    SELECT p.id, p.name, p.phone, b.name AS branch_name,
+           SUM(pk.sessions_total - pk.sessions_used) AS pending_sessions,
+           MAX(s.session_date) AS last_visit,
+           CAST(julianday('now') - julianday(MAX(s.session_date)) AS INTEGER) AS days_since_visit,
+           GROUP_CONCAT(DISTINCT sc.name) AS service_names
+    FROM packages_purchased pk
+    JOIN patients p ON p.id = pk.patient_id
+    LEFT JOIN branches b ON b.id = p.home_branch_id
+    LEFT JOIN sessions_consumed s ON s.patient_id = p.id
+    LEFT JOIN services_catalog sc ON sc.id = pk.service_id
+    WHERE pk.sessions_used < pk.sessions_total
+      AND p.id NOT IN (
+        SELECT DISTINCT patient_id FROM appointments
+        WHERE date(appointment_ts) >= date('now')
+          AND status NOT IN ('no_show', 'rescheduled')
+      )
+    GROUP BY p.id
+    ORDER BY days_since_visit DESC NULLS LAST
+    LIMIT 50
+  `).all() as PendingSessionPatient[];
 }
 
 export function listBranchStats(): Array<{
@@ -834,4 +1172,271 @@ export function saveCohort(label: string, description: string, filterJson: strin
 
 export function deleteSavedCohort(id: number): void {
   db().prepare("DELETE FROM saved_cohorts WHERE id = ?").run(id);
+}
+
+// ----- Clinic status (operational readiness) --------------------------------
+
+export const DEFAULT_APPLIANCES = [
+  "Q-Switch Laser (Pigmentation)",
+  "Diode Laser (Hair Reduction)",
+  "HydraFacial Machine",
+  "Carbon Peel Laser",
+  "RF Microneedling Device",
+  "Comedone Steamer",
+  "Cryo Chiller / Cooling",
+];
+
+function defaultAppliances(): ClinicAppliance[] {
+  return DEFAULT_APPLIANCES.map((name) => ({ name, working: true, note: "" }));
+}
+
+function parseAppliances(json: string | null | undefined): ClinicAppliance[] {
+  if (!json) return defaultAppliances();
+  try {
+    const arr = JSON.parse(json);
+    if (Array.isArray(arr) && arr.length) {
+      return arr.map((a: any) => ({
+        name: String(a.name ?? ""),
+        working: a.working !== false,
+        note: a.note ? String(a.note) : "",
+      })).filter((a: ClinicAppliance) => a.name);
+    }
+  } catch {}
+  return defaultAppliances();
+}
+
+function parseOffers(json: string | null | undefined): ClinicOffer[] {
+  if (!json) return [];
+  try {
+    const arr = JSON.parse(json);
+    if (Array.isArray(arr)) {
+      return arr.map((o: any) => ({
+        title: String(o.title ?? ""),
+        detail: o.detail ? String(o.detail) : "",
+        discount_pct: o.discount_pct == null ? null : Number(o.discount_pct),
+        valid_till: o.valid_till ? String(o.valid_till) : null,
+        active: o.active !== false,
+      })).filter((o: ClinicOffer) => o.title);
+    }
+  } catch {}
+  return [];
+}
+
+// Read-model for every branch, merging stored status with sensible defaults.
+export function listClinicStatus(): ClinicStatus[] {
+  const d = db();
+  const branches = d
+    .prepare("SELECT id, name, city, manager_name FROM branches ORDER BY id")
+    .all() as any[];
+  const rows = d.prepare("SELECT * FROM clinic_status").all() as any[];
+  const byBranch = new Map<number, any>(rows.map((r) => [r.branch_id, r]));
+  const docName = (id: number | null) =>
+    id ? ((d.prepare("SELECT name FROM doctors WHERE id = ?").get(id) as any)?.name ?? null) : null;
+
+  return branches.map((b) => {
+    const r = byBranch.get(b.id);
+    return {
+      branch_id: b.id,
+      branch_name: b.name,
+      city: b.city,
+      manager_name: b.manager_name ?? null,
+      is_open: r ? r.is_open : 1,
+      status_note: r?.status_note ?? null,
+      on_duty_doctor_id: r?.on_duty_doctor_id ?? null,
+      on_duty_doctor_name: docName(r?.on_duty_doctor_id ?? null),
+      doctor_on_leave: r ? r.doctor_on_leave : 0,
+      doctor_leave_note: r?.doctor_leave_note ?? null,
+      appliances: parseAppliances(r?.appliances_json),
+      offers: parseOffers(r?.offers_json),
+      updated_at: r?.updated_at ?? null,
+      updated_by: r?.updated_by ?? null,
+    };
+  });
+}
+
+export function getClinicStatus(branchId: number): ClinicStatus | null {
+  return listClinicStatus().find((s) => s.branch_id === branchId) ?? null;
+}
+
+export type ClinicStatusInput = {
+  is_open?: boolean;
+  status_note?: string | null;
+  on_duty_doctor_id?: number | null;
+  doctor_on_leave?: boolean;
+  doctor_leave_note?: string | null;
+  appliances?: ClinicAppliance[];
+  offers?: ClinicOffer[];
+  updated_by?: string | null;
+};
+
+export function upsertClinicStatus(branchId: number, input: ClinicStatusInput): ClinicStatus | null {
+  const d = db();
+  const existing = d.prepare("SELECT * FROM clinic_status WHERE branch_id = ?").get(branchId) as any;
+  const merged = {
+    is_open: input.is_open === undefined ? (existing?.is_open ?? 1) : input.is_open ? 1 : 0,
+    status_note: input.status_note === undefined ? (existing?.status_note ?? null) : input.status_note,
+    on_duty_doctor_id:
+      input.on_duty_doctor_id === undefined ? (existing?.on_duty_doctor_id ?? null) : input.on_duty_doctor_id,
+    doctor_on_leave:
+      input.doctor_on_leave === undefined ? (existing?.doctor_on_leave ?? 0) : input.doctor_on_leave ? 1 : 0,
+    doctor_leave_note:
+      input.doctor_leave_note === undefined ? (existing?.doctor_leave_note ?? null) : input.doctor_leave_note,
+    appliances_json:
+      input.appliances === undefined ? (existing?.appliances_json ?? "[]") : JSON.stringify(input.appliances),
+    offers_json: input.offers === undefined ? (existing?.offers_json ?? "[]") : JSON.stringify(input.offers),
+    updated_by: input.updated_by ?? existing?.updated_by ?? null,
+  };
+  d.prepare(
+    `INSERT INTO clinic_status
+       (branch_id, is_open, status_note, on_duty_doctor_id, doctor_on_leave, doctor_leave_note, appliances_json, offers_json, updated_at, updated_by)
+     VALUES (@branch_id, @is_open, @status_note, @on_duty_doctor_id, @doctor_on_leave, @doctor_leave_note, @appliances_json, @offers_json, datetime('now'), @updated_by)
+     ON CONFLICT(branch_id) DO UPDATE SET
+       is_open=@is_open, status_note=@status_note, on_duty_doctor_id=@on_duty_doctor_id,
+       doctor_on_leave=@doctor_on_leave, doctor_leave_note=@doctor_leave_note,
+       appliances_json=@appliances_json, offers_json=@offers_json,
+       updated_at=datetime('now'), updated_by=@updated_by`
+  ).run({ branch_id: branchId, ...merged });
+  return getClinicStatus(branchId);
+}
+
+export type PractitionerSession = {
+  id: number;
+  appointment_id: number;
+  patient_id: number;
+  photos_json: string;
+  consent_signed: number;
+  medical_history: string | null;
+  body_type: string | null;
+  treatment_notes: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  status: string;
+};
+
+export function getPractitionerSession(appointmentId: number): PractitionerSession | null {
+  const row = db().prepare("SELECT * FROM practitioner_sessions WHERE appointment_id = ?").get(appointmentId);
+  return (row as PractitionerSession | undefined) ?? null;
+}
+
+export function upsertPractitionerSession(
+  appointmentId: number,
+  patientId: number,
+  data: Partial<Omit<PractitionerSession, 'id' | 'appointment_id' | 'patient_id'>>
+): PractitionerSession {
+  const d = db();
+  const existing = d.prepare("SELECT id FROM practitioner_sessions WHERE appointment_id = ?").get(appointmentId);
+  if (existing) {
+    const fields = Object.keys(data) as Array<keyof typeof data>;
+    if (fields.length > 0) {
+      const set = fields.map(f => f + ' = ?').join(', ');
+      d.prepare('UPDATE practitioner_sessions SET ' + set + ' WHERE appointment_id = ?').run(
+        ...fields.map(f => data[f] as any), appointmentId
+      );
+    }
+  } else {
+    const allData: Record<string, any> = { appointment_id: appointmentId, patient_id: patientId, ...data };
+    const fieldNames = Object.keys(allData);
+    const placeholders = fieldNames.map(() => '?').join(', ');
+    d.prepare(
+      'INSERT INTO practitioner_sessions (' + fieldNames.join(', ') + ') VALUES (' + placeholders + ')'
+    ).run(...fieldNames.map(f => allData[f]));
+  }
+  return d.prepare("SELECT * FROM practitioner_sessions WHERE appointment_id = ?").get(appointmentId) as PractitionerSession;
+}
+
+export type FnoSession = {
+  id: number;
+  appointment_id: number;
+  patient_id: number;
+  service_type: string;
+  bom_items_json: string;
+  submitted_at: string | null;
+  status: string;
+};
+
+export function getFnoSession(appointmentId: number): FnoSession | null {
+  const row = db().prepare("SELECT * FROM fno_sessions WHERE appointment_id = ?").get(appointmentId);
+  return (row as FnoSession | undefined) ?? null;
+}
+
+export function upsertFnoSession(
+  appointmentId: number,
+  patientId: number,
+  serviceType: string,
+  bomItemsJson: string
+): FnoSession {
+  const d = db();
+  const existing = d.prepare("SELECT id FROM fno_sessions WHERE appointment_id = ?").get(appointmentId);
+  if (existing) {
+    d.prepare("UPDATE fno_sessions SET bom_items_json = ? WHERE appointment_id = ?").run(bomItemsJson, appointmentId);
+  } else {
+    d.prepare(
+      "INSERT INTO fno_sessions (appointment_id, patient_id, service_type, bom_items_json) VALUES (?, ?, ?, ?)"
+    ).run(appointmentId, patientId, serviceType, bomItemsJson);
+  }
+  return d.prepare("SELECT * FROM fno_sessions WHERE appointment_id = ?").get(appointmentId) as FnoSession;
+}
+
+export function submitFnoSession(appointmentId: number): void {
+  db().prepare(
+    "UPDATE fno_sessions SET status = 'submitted', submitted_at = datetime('now') WHERE appointment_id = ?"
+  ).run(appointmentId);
+}
+
+export type TreatmentOpsRow = {
+  appointment_id: number;
+  patient_id: number;
+  patient_name: string;
+  phone: string;
+  service_type: string;
+  appointment_ts: string;
+  appt_status: string;
+  branch_name: string;
+  doctor_name: string | null;
+  // Practitioner session
+  ps_id: number | null;
+  ps_status: string | null;
+  ps_photos: number;
+  ps_consent: number;
+  ps_started_at: string | null;
+  ps_completed_at: string | null;
+  ps_notes: string | null;
+  // FnO session
+  fno_id: number | null;
+  fno_status: string | null;
+  fno_submitted_at: string | null;
+};
+
+export function getTreatmentOps(lookbackDays = 30): TreatmentOpsRow[] {
+  return db().prepare(`
+    SELECT
+      a.id              AS appointment_id,
+      p.id              AS patient_id,
+      p.name            AS patient_name,
+      p.phone,
+      a.service_type,
+      a.appointment_ts,
+      a.status          AS appt_status,
+      b.name            AS branch_name,
+      doc.name          AS doctor_name,
+      ps.id             AS ps_id,
+      ps.status         AS ps_status,
+      COALESCE(json_array_length(ps.photos_json), 0) AS ps_photos,
+      COALESCE(ps.consent_signed, 0)  AS ps_consent,
+      ps.started_at     AS ps_started_at,
+      ps.completed_at   AS ps_completed_at,
+      ps.treatment_notes AS ps_notes,
+      fs.id             AS fno_id,
+      fs.status         AS fno_status,
+      fs.submitted_at   AS fno_submitted_at
+    FROM appointments a
+    JOIN patients p   ON p.id  = a.patient_id
+    JOIN branches b   ON b.id  = a.branch_id
+    LEFT JOIN doctors doc ON doc.id = a.doctor_id
+    LEFT JOIN practitioner_sessions ps ON ps.appointment_id = a.id
+    LEFT JOIN fno_sessions          fs ON fs.appointment_id = a.id
+    WHERE a.status IN ('arrived','in_session','converted','rescheduled')
+      AND date(a.appointment_ts) >= date('now', '-' || ? || ' days')
+    ORDER BY a.appointment_ts DESC
+  `).all(lookbackDays) as TreatmentOpsRow[];
 }

@@ -14,8 +14,8 @@ export default function AppointmentsPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Appointment (Additional feature)"
-        subtitle="Daily calendar view — confirm call-centre bookings and convert arrivals to check-ins."
+        title="Schedule Board"
+        subtitle="Daily calendar view — click any booking to confirm, treat, and record inventory in one panel."
       />
       <AppointmentsClient initialAppointments={appointments} initialDate={date} />
     </div>

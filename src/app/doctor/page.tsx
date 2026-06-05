@@ -1,4 +1,4 @@
-import { listAllPatients, listLiveCheckIns, getPatientPortfolio } from "@/lib/db";
+import { listAllPatients, listLiveCheckIns, getPatientPortfolio, purgeSessionConsultations, purgeSessionPrescriptions } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { DoctorClient } from "./doctor-client";
 
@@ -9,6 +9,10 @@ export default function DoctorPage({
 }: {
   searchParams: { patient?: string };
 }) {
+  // Clear session recordings/prescriptions on each page load; seeds are preserved.
+  purgeSessionConsultations();
+  purgeSessionPrescriptions();
+
   const patients = listAllPatients();
   const checkIns = listLiveCheckIns();
   const initialId =
