@@ -35,6 +35,7 @@ let _db: Database.Database | null = null;
 
 export function db(): Database.Database {
   if (_db) return _db;
+  let freshCopy = false;
   if (IS_VERCEL || IS_AMPLIFY) {
     // Cold start: copy the pre-seeded DB from the build artifact to /tmp.
     // Also re-copy if /tmp exists but is empty/smaller than source (stale file).
@@ -42,7 +43,7 @@ export function db(): Database.Database {
       const srcSize = fs.statSync(SOURCE_DB).size;
       const tmpSize = fs.existsSync(TMP_DB) ? fs.statSync(TMP_DB).size : -1;
       if (tmpSize < srcSize) {
-        try { fs.copyFileSync(SOURCE_DB, TMP_DB); } catch {}
+        try { fs.copyFileSync(SOURCE_DB, TMP_DB); freshCopy = true; } catch {}
       }
     }
   } else {
@@ -54,6 +55,8 @@ export function db(): Database.Database {
   handle.pragma("foreign_keys = ON");
   _db = handle;
   initSchema(handle);
+  // Only reset demo ops data on a fresh Amplify/Vercel cold start (not on every local dev restart)
+  if (freshCopy) resetOpsDemo(handle);
   return handle;
 }
 
@@ -565,41 +568,6 @@ export function initSchema(handle?: Database.Database): void {
     d.prepare("UPDATE branches SET zone_name = 'Zone ' || id, zone_manager_name = 'Zone Manager' WHERE zone_name IS NULL OR zone_name = ''").run();
   } catch {}
 
-  // ── Demo reset: always wipe treatment & FnO sessions on app start ──────────
-  // This ensures the ops page starts fresh every time the server boots so the
-  // full entry flow can be demoed repeatedly without manual cleanup.
-  try {
-    d.exec("DELETE FROM fno_sessions");
-    d.exec("DELETE FROM practitioner_sessions");
-    // Reset appointments: arrived/in_session/converted → arrived (all "ready to start")
-    d.prepare(`
-      UPDATE appointments
-      SET status = 'arrived'
-      WHERE status IN ('arrived', 'in_session', 'converted')
-        AND date(appointment_ts) >= date('now', '-30 days')
-    `).run();
-    // Re-seed one "in-progress" and one "complete+FnO" example so all filter tabs show data
-    const opsAppts = d.prepare(
-      "SELECT id FROM appointments WHERE status = 'arrived' ORDER BY appointment_ts DESC LIMIT 6"
-    ).all() as any[];
-    if (opsAppts.length >= 2) {
-      // Mark second appointment as converted (treatment done, pending FnO)
-      d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[1].id);
-      d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(opsAppts[1].id);
-      // Mark fourth as converted + in-progress treatment
-      if (opsAppts[3]) {
-        d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[3].id);
-        d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'in_progress', 1)").run(opsAppts[3].id);
-      }
-      // Mark fifth as fully complete (treatment done + FnO submitted)
-      if (opsAppts[4]) {
-        d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[4].id);
-        d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(opsAppts[4].id);
-        d.prepare("INSERT OR IGNORE INTO fno_sessions (appointment_id, status, submitted_at) VALUES (?, 'submitted', datetime('now'))").run(opsAppts[4].id);
-      }
-    }
-  } catch (_) {}
-
   // Seed prescription-matched products into catalog so checkout can auto-fill prices.
   // Safe to run multiple times — INSERT OR IGNORE on unique SKU.
   try {
@@ -626,6 +594,45 @@ export function initSchema(handle?: Database.Database): void {
     ];
     for (const row of rxProducts) ins.run(...row);
   } catch {}
+}
+
+/**
+ * Wipe all treatment/FnO sessions and reset appointment statuses so the
+ * ops demo flow can be run from scratch. Called automatically on Amplify/Vercel
+ * cold starts (fresh DB copy). Not called on local dev restarts.
+ */
+export function resetOpsDemo(handle?: Database.Database): void {
+  const d = handle ?? db();
+  try {
+    d.exec("DELETE FROM fno_sessions");
+    d.exec("DELETE FROM practitioner_sessions");
+    // Reset all recent arrived/in_session/converted → arrived (ready to start)
+    d.prepare(`
+      UPDATE appointments SET status = 'arrived'
+      WHERE status IN ('arrived','in_session','converted')
+        AND date(appointment_ts) >= date('now', '-30 days')
+    `).run();
+    // Re-seed 3 demo entries so all ops filter tabs show data immediately
+    const appts = d.prepare(
+      "SELECT id FROM appointments WHERE status = 'arrived' ORDER BY appointment_ts DESC LIMIT 6"
+    ).all() as any[];
+    if (appts.length >= 2) {
+      // 2nd: completed treatment, pending FnO
+      d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(appts[1].id);
+      d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(appts[1].id);
+    }
+    if (appts[3]) {
+      // 4th: in-progress treatment
+      d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(appts[3].id);
+      d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'in_progress', 1)").run(appts[3].id);
+    }
+    if (appts[4]) {
+      // 5th: fully complete (treatment + FnO)
+      d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(appts[4].id);
+      d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(appts[4].id);
+      d.prepare("INSERT OR IGNORE INTO fno_sessions (appointment_id, status, submitted_at) VALUES (?, 'submitted', datetime('now'))").run(appts[4].id);
+    }
+  } catch (_) {}
 }
 
 export function resetSchema(): void {
