@@ -1,133 +1,145 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-const IconCheck = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 12 L9.5 17.5 L20 7" />
-  </svg>
-);
-
-/* Defined OUTSIDE LoginPage so it never remounts on keystroke */
-const LoginForm = ({
-  email, pw, touched, success, showEmailErr, showPwErr, emailValid, pwValid,
-  setEmail, setPw, setTouched, submit,
-}: {
-  email: string; pw: string; touched: { email: boolean; pw: boolean };
-  success: boolean; showEmailErr: boolean; showPwErr: boolean;
-  emailValid: boolean; pwValid: boolean;
-  setEmail: (v: string) => void; setPw: (v: string) => void;
-  setTouched: (fn: (t: any) => any) => void; submit: () => void;
-}) => (
-  <div style={{ width: '100%', maxWidth: 400 }}>
-    <div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--mono)' }}>Sign in</div>
-    <div style={{ fontFamily: 'var(--serif)', fontSize: 36, marginTop: 10, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-      Continue your <span style={{ color: 'var(--brand)' }}>care</span>.
-    </div>
-
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 28 }}>
-      <div className={`field ${showEmailErr ? 'error' : ''}`}>
-        <label>Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-        />
-        {showEmailErr
-          ? <div className="hint err">· Enter a valid email address</div>
-          : (emailValid && <div className="hint" style={{ color: 'var(--ok)' }}>Registered account found</div>)
-        }
-      </div>
-
-      <div className={`field ${showPwErr ? 'error' : ''}`}>
-        <label>Password</label>
-        <input
-          type="password"
-          value={pw}
-          placeholder="••••••••"
-          onChange={(e) => setPw(e.target.value)}
-          onBlur={() => setTouched((t) => ({ ...t, pw: true }))}
-        />
-        <div className={`hint ${showPwErr ? 'err' : ''}`}>
-          · {showPwErr ? 'Must be at least 8 characters' : 'At least 8 characters'}
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
-          <input type="checkbox" defaultChecked style={{ width: 14, height: 14, accentColor: 'var(--brand)' }} />
-          Stay signed in
-        </label>
-        <a style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 500, cursor: 'pointer' }}>Forgot password →</a>
-      </div>
-
-      <button className="btn lg block" style={{ marginTop: 4 }} onClick={submit}>
-        {success ? <><IconCheck size={14} /> Signed in</> : <>Sign in <span className="arrow" /></>}
-      </button>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-        <span style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-      </div>
-
-      <button className="btn ghost block">Continue with OTP · +91 9X XXXX 4421</button>
-    </div>
-
-    <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 28, textAlign: 'center' }}>
-      New here?{' '}
-      <Link href="/customer/register" style={{ color: 'var(--brand)', fontWeight: 500, borderBottom: '1px solid var(--brand-rule)', textDecoration: 'none' }}>
-        Create an account →
-      </Link>
-    </div>
-  </div>
-);
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('priya.r@gmail.com');
-  const [pw, setPw] = useState('');
-  const [touched, setTouched] = useState({ email: false, pw: false });
-  const [success, setSuccess] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [phase, setPhase] = useState<'phone' | 'otp' | 'done'>('phone');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const pwValid = pw.length >= 8;
-  const showEmailErr = touched.email && !emailValid;
-  const showPwErr = touched.pw && !pwValid;
+  const phoneDigits = phone.replace(/\D/g, '');
+  const phoneValid = phoneDigits.length === 10;
 
-  const submit = () => {
-    setTouched({ email: true, pw: true });
-    if (emailValid && pwValid) {
-      setSuccess(true);
-      localStorage.setItem('user', JSON.stringify({ email, name: 'Priya R.' }));
-      setTimeout(() => router.push('/customer/dashboard'), 800);
-    }
+  const sendOtp = () => {
+    if (!phoneValid) { setError('Enter a valid 10-digit mobile number'); return; }
+    setError('');
+    setLoading(true);
+    // Simulate OTP send (any phone works in demo)
+    setTimeout(() => { setLoading(false); setPhase('otp'); }, 900);
   };
 
-  const formProps = { email, pw, touched, success, showEmailErr, showPwErr, emailValid, pwValid, setEmail, setPw, setTouched, submit };
+  const verifyOtp = () => {
+    if (otp.length < 4) { setError('Enter the OTP sent to your phone'); return; }
+    setError('');
+    setLoading(true);
+    // Simulate OTP verify (any 4–6 digit code accepted in demo)
+    setTimeout(() => {
+      localStorage.setItem('user', JSON.stringify({ phone: phoneDigits, name: 'Guest' }));
+      setPhase('done');
+      setTimeout(() => router.push('/customer/dashboard'), 600);
+    }, 900);
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper-grad)', display: 'flex', flexDirection: 'column' }}>
       {/* Brand header */}
       <div style={{
-        padding: 'clamp(32px, 5vw, 48px) clamp(24px, 5vw, 48px) clamp(20px, 3vw, 28px)',
+        padding: 'clamp(32px,5vw,48px) clamp(24px,5vw,48px) clamp(20px,3vw,28px)',
         background: 'var(--paper-2)',
         borderBottom: '1px solid var(--rule)',
       }}>
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>
+        <div style={{ fontFamily: 'var(--serif)', fontSize: 'clamp(26px,4vw,32px)', fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em' }}>
           kaya<span style={{ color: 'var(--brand)' }}>.</span>
         </div>
         <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '0.2em', color: 'var(--mute)', marginTop: 6, textTransform: 'uppercase' }}>
           Skin · Hair · Body
         </div>
       </div>
+
       {/* Form */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: 'clamp(32px, 5vw, 56px) clamp(24px, 5vw, 48px) clamp(40px, 6vw, 64px)' }}>
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          <LoginForm {...formProps} />
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: 'clamp(32px,5vw,56px) clamp(24px,5vw,48px)' }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
+
+          <div style={{ fontSize: 11, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'var(--mono)' }}>
+            Sign in
+          </div>
+          <div style={{ fontFamily: 'var(--serif)', fontSize: 36, marginTop: 10, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            Continue your <span style={{ color: 'var(--brand)' }}>care</span>.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
+
+            {/* Phone field — always shown */}
+            <div className={`field ${error && phase === 'phone' ? 'error' : ''}`}>
+              <label>Mobile number</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: '1px solid var(--rule)', borderRadius: 8,
+                  padding: '0 12px', background: 'var(--paper-2)',
+                  fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap',
+                }}>
+                  +91
+                </div>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="98765 43210"
+                  value={phone}
+                  onChange={e => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') sendOtp(); }}
+                  disabled={phase !== 'phone'}
+                  style={{ flex: 1, opacity: phase !== 'phone' ? 0.6 : 1 }}
+                />
+              </div>
+              {error && phase === 'phone' && <div className="hint err">· {error}</div>}
+            </div>
+
+            {/* OTP field — shown after send */}
+            {phase !== 'phone' && (
+              <div className={`field ${error && phase === 'otp' ? 'error' : ''}`}>
+                <label>OTP</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={e => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') verifyOtp(); }}
+                  autoFocus
+                />
+                {phase === 'otp' && (
+                  <div className="hint" style={{ color: 'var(--mute)' }}>
+                    · OTP sent to +91 {phoneDigits.slice(0, 5)}XXXXX
+                    {' · '}
+                    <button
+                      onClick={() => { setPhase('phone'); setOtp(''); setError(''); }}
+                      style={{ color: 'var(--brand)', fontWeight: 500, textDecoration: 'underline', cursor: 'pointer', border: 'none', background: 'none', padding: 0, fontSize: 'inherit' }}
+                    >
+                      Change number
+                    </button>
+                  </div>
+                )}
+                {error && phase === 'otp' && <div className="hint err">· {error}</div>}
+              </div>
+            )}
+
+            {/* CTA */}
+            {phase === 'phone' && (
+              <button className="btn lg block" onClick={sendOtp} disabled={loading}>
+                {loading ? 'Sending OTP…' : <>Send OTP <span className="arrow" /></>}
+              </button>
+            )}
+
+            {phase === 'otp' && (
+              <button className="btn lg block" onClick={verifyOtp} disabled={loading}>
+                {loading ? 'Verifying…' : <>Verify &amp; Sign in <span className="arrow" /></>}
+              </button>
+            )}
+
+            {phase === 'done' && (
+              <button className="btn lg block" disabled style={{ opacity: 0.7 }}>
+                ✓ Signed in — redirecting…
+              </button>
+            )}
+
+          </div>
         </div>
       </div>
     </div>

@@ -51,7 +51,11 @@ export function CheckoutFlow({
       const res = await fetch(`/api/patients/${patientId}/portfolio`);
       const data = await res.json();
       const latest = data.portfolio?.prescriptions?.[0];
-      const items: any[] = latest?.items ?? [];
+      let items: any[] = latest?.items ?? [];
+      // If no prescription items, show the appointment service as the default line item
+      if (items.length === 0) {
+        items = [{ product: serviceType, product_detail: "Appointment service", cost: null }];
+      }
       setRxItems(items);
       setSelected(items.map(() => true));
     } catch {}
@@ -103,20 +107,16 @@ export function CheckoutFlow({
           <span className="text-sm font-semibold">Select items patient is purchasing</span>
           <button onClick={() => setPhase("choose")} className="text-xs text-muted-foreground underline hover:text-foreground">← Back</button>
         </div>
-        {rxItems.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">No prescription found. Ask the doctor to generate one first.</div>
-        ) : (
-          <div className="space-y-1.5">
-            {rxItems.map((it, i) => (
-              <label key={i} className={["flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors", selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-60"].join(" ")}>
-                <input type="checkbox" checked={selected[i]} onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))} className="h-4 w-4 rounded accent-emerald-600" />
-                <span className="flex-1 text-sm font-medium">{it.product ?? it.name}</span>
-                {it.product_detail && <span className="text-xs text-muted-foreground">{it.product_detail}</span>}
-                <span className="text-sm font-semibold tabular-nums">{it.cost != null ? inr(it.cost) : <span className="text-muted-foreground">—</span>}</span>
-              </label>
-            ))}
-          </div>
-        )}
+        <div className="space-y-1.5">
+          {rxItems.map((it, i) => (
+            <label key={i} className={["flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors", selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-60"].join(" ")}>
+              <input type="checkbox" checked={selected[i]} onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))} className="h-4 w-4 rounded accent-emerald-600" />
+              <span className="flex-1 text-sm font-medium">{it.product ?? it.name}</span>
+              {it.product_detail && <span className="text-xs text-muted-foreground">{it.product_detail}</span>}
+              <span className="text-sm font-semibold tabular-nums">{it.cost != null ? inr(it.cost) : <span className="text-muted-foreground">—</span>}</span>
+            </label>
+          ))}
+        </div>
         <div className="flex items-center justify-between pt-1 border-t border-border">
           <div className="text-sm"><span className="text-muted-foreground">{selectedRxItems.length} items · </span><span className="font-bold text-base">{inr(total)}</span></div>
           <button onClick={() => collectAndReceipt("products")} disabled={selectedRxItems.length === 0} className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-semibold transition-colors">

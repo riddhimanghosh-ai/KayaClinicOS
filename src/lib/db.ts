@@ -418,16 +418,20 @@ export function initSchema(handle?: Database.Database): void {
     const cnt = (d.prepare("SELECT COUNT(*) as cnt FROM appointments WHERE date(appointment_ts) = ?").get(today) as any).cnt;
     if (cnt === 0) {
       const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
-      const SERVICES = ["Consultation","Laser Hair Reduction","Carbon Laser Peel","Acne Clearance Program","Q-Switch Laser Toning","Chemical Peel","Consultation","Microneedling for Scars"];
-      const TIMES = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30"];
+      const SERVICES   = ["Consultation","Laser Hair Reduction","Carbon Laser Peel","Acne Clearance Program","Q-Switch Laser Toning","Chemical Peel","Consultation","Microneedling for Scars"];
+      const TIMES      = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30"];
+      // Distribute across 4 doctors so no doctor has overlapping slots
+      const DOCTOR_IDS = [1, 2, 1, 3, 2, 3, 1, 4];
+      // Realistic treatment durations (minutes)
+      const DURATIONS  = [30, 60, 60, 45, 60, 45, 30, 75];
       const LEAD_TYPES = ['website_form', 'chatbot', 'call', 'referral', 'campaign', 'walk_in'];
       const DISPOSITIONS = ['New Consultation', 'Follow-up Visit', 'Treatment Session', 'Package Session'];
       const SUB_DISPS = ['New Patient', 'Existing Patient', 'Re-engagement', 'Referral Patient'];
       patients.forEach((p: any, i: number) => {
         const branchId = i < 4 ? 1 : 2;
-        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type) VALUES (?, ?, 1, ?, ?, 'booked', ?, ?, ?, ?)").run(
-          p.id, branchId, SERVICES[i], `${today} ${TIMES[i]}:00`, `VESC${String(100000 + i * 173)}`,
-          DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i % LEAD_TYPES.length]
+        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type, duration_minutes) VALUES (?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?)").run(
+          p.id, branchId, DOCTOR_IDS[i], SERVICES[i], `${today} ${TIMES[i]}:00`, `VESC${String(100000 + i * 173)}`,
+          DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i % LEAD_TYPES.length], DURATIONS[i]
         );
       });
     }
