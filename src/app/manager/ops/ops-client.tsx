@@ -249,7 +249,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                       {isPendingTreatment(row) && (
                         <div className="flex flex-col gap-1.5">
                           <a
-                            href={`/manager/practitioner/${row.appointment_id}`}
+                            href={`/manager/appointments?open=${row.appointment_id}`}
                             className="flex items-center gap-1.5 rounded-lg bg-violet-600 text-white px-3 py-2 text-xs font-semibold hover:bg-violet-700 transition-colors whitespace-nowrap"
                           >
                             Open Treatment <ArrowRight className="h-3.5 w-3.5" />

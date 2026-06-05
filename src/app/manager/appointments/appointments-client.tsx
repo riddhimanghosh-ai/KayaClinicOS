@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save, ShoppingBag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { AppointmentRow } from "@/lib/db";
+import { CheckoutFlow } from "@/components/checkout-flow";
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const LABEL_W = 220;         // px, left column
@@ -121,14 +122,23 @@ const STATUS_LABEL: Record<string, string> = {
 export function AppointmentsClient({
   initialAppointments,
   initialDate,
+  initialOpenId,
 }: {
   initialAppointments: AppointmentRow[];
   initialDate: string;
+  initialOpenId?: number;
 }) {
   const [date, setDate] = useState(initialDate);
   const [appts, setAppts] = useState<AppointmentRow[]>(initialAppointments);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<AppointmentRow | null>(null);
+
+  useEffect(() => {
+    if (initialOpenId) {
+      const found = appts.find(a => a.id === initialOpenId);
+      if (found) setSelected(found);
+    }
+  }, [initialOpenId]); // run once on mount
 
   const fetchDate = async (iso: string) => {
     setDate(iso);
@@ -366,6 +376,12 @@ export function AppointmentsClient({
                                   </span>
                                 </div>
                               </div>
+                              {/* Checkout indicator for arrived patients */}
+                              {(a.status === "arrived" || a.status === "in_session") && (
+                                <div className="mt-0.5 pl-3.5">
+                                  <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 rounded-full font-semibold">Checkout →</span>
+                                </div>
+                              )}
                             </div>
                           </button>
                         );
@@ -495,7 +511,7 @@ const LEAD_TYPE_OPTIONS = ["website_form","chatbot","call","referral","campaign"
 const DISPOSITION_OPTIONS = ["New Consultation","Follow-up Visit","Treatment Session","Package Session","Product Purchase","Consultation + Treatment"];
 const SUB_DISP_OPTIONS = ["New Patient","Existing Patient","Re-engagement","Referral Patient","VIP / Premium"];
 
-type Tab = "booking" | "treatment" | "inventory";
+type Tab = "booking" | "treatment" | "inventory" | "checkout";
 
 // What the clinic manager needs to do at each status
 const NEXT_STEP: Record<string, { msg: string; action?: string }> = {
@@ -554,7 +570,8 @@ function DetailDrawer({
 
   // Auto-switch tab when status advances — nothing stays locked
   useEffect(() => {
-    if (appt.status === "arrived" || appt.status === "in_session") setTab("treatment");
+    if (appt.status === "arrived") setTab("checkout");
+    else if (appt.status === "in_session") setTab("treatment");
     else if (appt.status === "converted") setTab("inventory");
   }, [appt.status]);
 
@@ -645,6 +662,8 @@ function DetailDrawer({
   const nextStep = NEXT_STEP[appt.status];
   const treatmentDone = appt.status === "converted";
   const inventoryDone = fnoSubmitted;
+  const checkoutLocked = !["arrived", "in_session"].includes(appt.status);
+  const checkoutDone = appt.status === "converted";
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
@@ -735,12 +754,18 @@ function DetailDrawer({
               </div>
             )}
             {appt.status === "arrived" && (
-              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 space-y-2">
-                <div className="text-xs font-semibold text-violet-800">Step 3 — Go to the Treatment tab to start the session</div>
-                <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 h-10"
-                  onClick={() => setTab("treatment")}>
-                  Open Treatment Tab →
-                </Button>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-amber-800">Step 3 — Checkout the patient or start their treatment session</div>
+                <div className="flex gap-2">
+                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-9"
+                    onClick={() => setTab("checkout")}>
+                    <ShoppingBag className="h-4 w-4 mr-1.5" />Checkout →
+                  </Button>
+                  <Button className="flex-1 bg-violet-600 hover:bg-violet-700 text-white border-0 h-9"
+                    onClick={() => setTab("treatment")}>
+                    Treatment →
+                  </Button>
+                </div>
               </div>
             )}
             {appt.status === "in_session" && (
@@ -781,9 +806,10 @@ function DetailDrawer({
         {/* ── Tabs ── */}
         <div className="flex border-b border-border shrink-0 bg-card">
           {([
-            { key: "booking",   label: "1. Booking", icon: User,          locked: false,          done: false },
-            { key: "treatment", label: "2. Treatment", icon: ClipboardList, locked: treatmentLocked, done: treatmentDone },
-            { key: "inventory", label: "3. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
+            { key: "booking",   label: "1. Booking",  icon: User,          locked: false,           done: false },
+            { key: "checkout",  label: "2. Checkout",  icon: ShoppingBag,   locked: checkoutLocked,  done: checkoutDone },
+            { key: "treatment", label: "3. Treatment", icon: ClipboardList, locked: treatmentLocked, done: treatmentDone },
+            { key: "inventory", label: "4. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
           ] as { key: Tab; label: string; icon: any; locked: boolean; done: boolean }[]).map(t => (
             <button
               key={t.key}
@@ -905,7 +931,29 @@ function DetailDrawer({
             </div>
           )}
 
-          {/* ══ TAB 2: TREATMENT ══ */}
+          {/* ══ TAB 2: CHECKOUT ══ */}
+          {tab === "checkout" && (
+            <div className="p-5">
+              {checkoutLocked ? (
+                <div className="rounded-lg border border-border bg-secondary/30 p-6 text-center space-y-1">
+                  <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <div className="text-sm font-medium">Checkout unlocks when patient arrives</div>
+                  <div className="text-xs text-muted-foreground">Patient must be marked as Arrived first.</div>
+                </div>
+              ) : (
+                <CheckoutFlow
+                  appointmentId={appt.id}
+                  patientId={appt.patient_id}
+                  patientName={appt.patient_name}
+                  serviceType={appt.service_type}
+                  onClose={() => setTab("booking")}
+                  onStartTreatment={() => setTab("treatment")}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ══ TAB 3: TREATMENT ══ */}
           {tab === "treatment" && (
             <div className="p-5 space-y-5">
               {treatmentLocked ? (
@@ -1007,7 +1055,7 @@ function DetailDrawer({
             </div>
           )}
 
-          {/* ══ TAB 3: INVENTORY (FnO) ══ */}
+          {/* ══ TAB 4: INVENTORY (FnO) ══ */}
           {tab === "inventory" && (
             <div className="p-5 space-y-4">
               {inventoryLocked ? (
