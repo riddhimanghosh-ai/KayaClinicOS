@@ -218,8 +218,23 @@ export async function transcribeAudio(audioBuffer: Buffer, mimeType = "audio/web
     body: formData,
   });
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Groq Whisper error: ${err}`);
+    let errBody = "";
+    try { errBody = await resp.text(); } catch {}
+    // Parse Groq error for a helpful message
+    let reason = `HTTP ${resp.status}`;
+    try {
+      const parsed = JSON.parse(errBody);
+      const code = parsed?.error?.code ?? "";
+      const msg  = parsed?.error?.message ?? errBody;
+      if (code === "organization_restricted") {
+        reason = "Your Groq organisation has been restricted — please visit console.groq.com → Help to resolve it.";
+      } else {
+        reason = msg || reason;
+      }
+    } catch {}
+    // Return a recoverable sentinel instead of throwing — the caller can show this
+    // string in the transcript area and let the user type over it.
+    return `[Transcription failed: ${reason}]`;
   }
   const data = await resp.json() as { text?: string };
   return (data.text ?? "").trim();

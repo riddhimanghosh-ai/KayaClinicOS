@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const NAV = [
-  { href: "/", label: "Zone Overview", icon: LayoutDashboard, role: null },
+  { href: "/", label: "Super Admin", icon: LayoutDashboard, role: null },
   { href: "/manager", label: "Clinic Manager", icon: Activity, role: "Manager", color: "text-blue-600" },
   { href: "/doctor", label: "Doctor Console", icon: Stethoscope, role: "Doctor", color: "text-emerald-600" },
-  { href: "/customer", label: "Customer App", icon: Smartphone, role: "Customer", color: "text-violet-600" },
+  { href: "/customer/login", label: "Customer App", icon: Smartphone, role: "Customer", color: "text-violet-600" },
 ];
 
 const MANAGER_SUBNAV = [
@@ -42,7 +42,7 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
   return (
     <ul className="space-y-0.5">
       {NAV.map(({ href, label, icon: Icon, color }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active = href === "/" ? pathname === "/" : href === "/customer/login" ? pathname.startsWith("/customer") : pathname.startsWith(href);
         return (
           <li key={href}>
             <Link
