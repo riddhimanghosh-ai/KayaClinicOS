@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2, Pencil, Tag, ChevronDown, X,
+  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2, Pencil, Tag, X,
 } from "lucide-react";
 import { inr } from "@/lib/utils";
 
@@ -46,6 +46,29 @@ type LineItem = {
   discountPct: number;      // 0-100
   priceOverride: boolean;   // true if manager manually set the price
 };
+
+// Clinic's standard promo discount (applied with one tap)
+const PROMO_DISCOUNT_PCT = 10;
+
+// Fallback prices for common product categories when catalog has no match
+const FALLBACK_PRICES: [RegExp, number][] = [
+  [/serum/i,        1800],
+  [/cream/i,         950],
+  [/shampoo/i,       750],
+  [/tablet|capsule/i,650],
+  [/sunscreen|spf/i, 950],
+  [/gel/i,           750],
+  [/wash|cleanser/i, 750],
+  [/powder/i,       1500],
+  [/solution/i,      850],
+];
+
+function fallbackPrice(name: string): number {
+  for (const [re, price] of FALLBACK_PRICES) {
+    if (re.test(name)) return price;
+  }
+  return 999; // generic product default
+}
 
 function lineTotal(item: LineItem): number {
   return Math.round(item.basePrice * (1 - item.discountPct / 100));
@@ -106,11 +129,12 @@ export function CheckoutFlow({
       const items: LineItem[] = productItems.map((it, i) => {
         const catalogPrice = priceResults[i];
         const existingCost = it.cost != null ? Number(it.cost) : null;
-        // Priority: existing saved cost → catalog price → 0 (manager must enter)
-        const basePrice = existingCost ?? catalogPrice ?? 0;
+        const productName  = it.product ?? it.name ?? "";
+        // Priority: existing saved cost → catalog price → fallback heuristic
+        const basePrice = existingCost ?? catalogPrice ?? fallbackPrice(productName);
         return {
           id: i,
-          product: it.product ?? it.name ?? "",
+          product: productName,
           product_detail: it.product_detail ?? "",
           basePrice,
           discountPct: 0,
@@ -125,7 +149,7 @@ export function CheckoutFlow({
     } catch (e) {
       console.error(e);
       // Even on error, show the service type as a fallback item
-      const fallback = [{ id: 0, product: serviceType, product_detail: "Appointment service fee", basePrice: 0, discountPct: 0, priceOverride: false }];
+      const fallback = [{ id: 0, product: serviceType, product_detail: "Appointment service fee", basePrice: fallbackPrice(serviceType), discountPct: 0, priceOverride: false }];
       setLineItems(fallback);
       setSelected([true]);
       setDiscountOpen([false]);
@@ -227,8 +251,8 @@ export function CheckoutFlow({
                         <span className="text-base font-bold text-emerald-700 tabular-nums leading-tight">{inr(final)}</span>
                       </div>
                     ) : (
-                      <span className={`text-base font-bold tabular-nums ${it.basePrice === 0 ? "text-amber-500" : "text-emerald-700"}`}>
-                        {it.basePrice === 0 ? "₹—" : inr(final)}
+                      <span className="text-base font-bold tabular-nums text-emerald-700">
+                        {inr(it.basePrice)}
                       </span>
                     )}
                   </div>
@@ -268,44 +292,29 @@ export function CheckoutFlow({
                       </button>
                     )}
 
-                    {/* Apply discount toggle */}
-                    {!discountOpen[i] ? (
-                      <button
-                        onClick={() => setDiscountOpen(p => p.map((v, j) => j === i ? true : v))}
-                        className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 border border-primary/30 rounded-lg px-2 py-1 bg-white hover:bg-primary/5 transition-colors font-medium"
-                      >
-                        <Tag className="h-3 w-3" />
-                        Apply discount offer
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-white px-2 py-1">
-                        <Tag className="h-3 w-3 text-primary shrink-0" />
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          autoFocus
-                          value={it.discountPct || ""}
-                          placeholder="0"
-                          onChange={e => updateItem(it.id, { discountPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
-                          className="w-8 text-xs font-bold text-center focus:outline-none bg-transparent tabular-nums text-primary"
-                        />
-                        <span className="text-[11px] text-muted-foreground">% off</span>
-                        {it.discountPct > 0 && (
-                          <span className="text-[10px] text-emerald-600 font-semibold">→ {inr(final)}</span>
-                        )}
+                    {/* Discount toggle — one-tap clinic promo */}
+                    {it.discountPct > 0 ? (
+                      <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1">
+                        <Tag className="h-3 w-3 text-emerald-600 shrink-0" />
+                        <span className="text-[11px] text-emerald-700 font-semibold">{PROMO_DISCOUNT_PCT}% clinic offer applied → {inr(final)}</span>
                         <button
-                          onClick={() => { updateItem(it.id, { discountPct: 0 }); setDiscountOpen(p => p.map((v, j) => j === i ? false : v)); }}
-                          className="text-muted-foreground hover:text-foreground ml-0.5"
+                          onClick={() => updateItem(it.id, { discountPct: 0 })}
+                          className="text-emerald-500 hover:text-emerald-700 ml-0.5"
+                          title="Remove discount"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </div>
+                    ) : (
+                      <button
+                        onClick={() => updateItem(it.id, { discountPct: PROMO_DISCOUNT_PCT })}
+                        className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 border border-primary/30 rounded-lg px-2 py-1 bg-white hover:bg-primary/5 transition-colors font-medium"
+                      >
+                        <Tag className="h-3 w-3" />
+                        Apply clinic offer
+                      </button>
                     )}
 
-                    {it.basePrice === 0 && !editingPrice[i] && (
-                      <span className="text-[11px] text-amber-600 font-medium ml-auto">⚠ Enter price to collect</span>
-                    )}
                   </div>
                 )}
               </div>
@@ -331,9 +340,6 @@ export function CheckoutFlow({
             <Receipt className="h-4 w-4" />Collect {inr(total)} →
           </button>
         </div>
-        {selectedItems.some(it => it.basePrice === 0) && (
-          <p className="text-xs text-amber-600 text-right">⚠ Some items need a price — tap "Enter price" above.</p>
-        )}
       </div>
     );
   }

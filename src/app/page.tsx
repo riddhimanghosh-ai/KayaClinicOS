@@ -403,8 +403,8 @@ export default function SuperAdminHome() {
                   </tr>
                 </thead>
                 <tbody>
-                  {monthlyRevenue.map((row, i) => {
-                    const prev  = monthlyRevenue[i + 1];
+                  {monthlyRevenue.filter(row => row.collection_inr > 0 || row.sessions_consumed_count > 0).map((row, i, arr) => {
+                    const prev  = arr[i + 1];
                     const delta = prev ? row.collection_inr - prev.collection_inr : null;
                     const isUp  = delta != null && delta > 0;
                     return (

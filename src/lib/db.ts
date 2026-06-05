@@ -36,12 +36,13 @@ let _db: Database.Database | null = null;
 export function db(): Database.Database {
   if (_db) return _db;
   if (IS_VERCEL || IS_AMPLIFY) {
-    // Cold start: copy the pre-seeded DB from the build artifact to /tmp
-    if (!fs.existsSync(TMP_DB) && fs.existsSync(SOURCE_DB)) {
-      try {
-        fs.copyFileSync(SOURCE_DB, TMP_DB);
-      } catch (e) {
-        // If copy fails, that's ok - DB will be created fresh
+    // Cold start: copy the pre-seeded DB from the build artifact to /tmp.
+    // Also re-copy if /tmp exists but is empty/smaller than source (stale file).
+    if (fs.existsSync(SOURCE_DB)) {
+      const srcSize = fs.statSync(SOURCE_DB).size;
+      const tmpSize = fs.existsSync(TMP_DB) ? fs.statSync(TMP_DB).size : -1;
+      if (tmpSize < srcSize) {
+        try { fs.copyFileSync(SOURCE_DB, TMP_DB); } catch {}
       }
     }
   } else {
@@ -412,7 +413,7 @@ export function initSchema(handle?: Database.Database): void {
       updated_by TEXT
     )`);
   } catch {}
-  // Seed today's appointments if none exist (dev only)
+  // Seed today's appointments if none exist
   try {
     const today = new Date().toISOString().slice(0, 10);
     const cnt = (d.prepare("SELECT COUNT(*) as cnt FROM appointments WHERE date(appointment_ts) = ?").get(today) as any).cnt;
@@ -420,19 +421,56 @@ export function initSchema(handle?: Database.Database): void {
       const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
       const SERVICES   = ["Consultation","Laser Hair Reduction","Carbon Laser Peel","Acne Clearance Program","Q-Switch Laser Toning","Chemical Peel","Consultation","Microneedling for Scars"];
       const TIMES      = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30"];
-      // Distribute across 4 doctors so no doctor has overlapping slots
       const DOCTOR_IDS = [1, 2, 1, 3, 2, 3, 1, 4];
-      // Realistic treatment durations (minutes)
       const DURATIONS  = [30, 60, 60, 45, 60, 45, 30, 75];
       const LEAD_TYPES = ['website_form', 'chatbot', 'call', 'referral', 'campaign', 'walk_in'];
       const DISPOSITIONS = ['New Consultation', 'Follow-up Visit', 'Treatment Session', 'Package Session'];
       const SUB_DISPS = ['New Patient', 'Existing Patient', 'Re-engagement', 'Referral Patient'];
+      // Mix of statuses so schedule board + ops page both show realistic data
+      const STATUSES   = ['arrived', 'in_session', 'converted', 'arrived', 'booked', 'booked', 'converted', 'booked'];
       patients.forEach((p: any, i: number) => {
         const branchId = i < 4 ? 1 : 2;
-        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type, duration_minutes) VALUES (?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?)").run(
-          p.id, branchId, DOCTOR_IDS[i], SERVICES[i], `${today} ${TIMES[i]}:00`, `VESC${String(100000 + i * 173)}`,
+        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type, duration_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+          p.id, branchId, DOCTOR_IDS[i], SERVICES[i], `${today} ${TIMES[i]}:00`, STATUSES[i],
+          `VESC${String(100000 + i * 173)}`,
           DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i % LEAD_TYPES.length], DURATIONS[i]
         );
+      });
+    }
+  } catch (_) {}
+
+  // Seed historical demo appointments (2–3 days ago) for ops page if none exist beyond today
+  try {
+    const opsCount = (d.prepare("SELECT COUNT(*) as cnt FROM appointments WHERE status IN ('arrived','in_session','converted') AND date(appointment_ts) < date('now')").get() as any).cnt;
+    if (opsCount === 0) {
+      const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 6").all() as any[];
+      const daysAgoStr = (n: number) => {
+        const d2 = new Date(); d2.setDate(d2.getDate() - n);
+        return d2.toISOString().slice(0, 10);
+      };
+      const HIST = [
+        { daysAgo: 2, time: "10:30", svc: "Carbon Laser Peel",     status: "arrived",   doc: 1, branch: 1 },
+        { daysAgo: 2, time: "11:00", svc: "Q-Switch Laser Toning", status: "converted", doc: 2, branch: 1 },
+        { daysAgo: 1, time: "09:30", svc: "Microneedling for Scars", status: "converted", doc: 3, branch: 2 },
+        { daysAgo: 1, time: "11:30", svc: "Chemical Peel",          status: "arrived",   doc: 1, branch: 2 },
+        { daysAgo: 3, time: "10:00", svc: "Acne Clearance Program", status: "converted", doc: 2, branch: 1 },
+        { daysAgo: 3, time: "14:00", svc: "GFC Hair Treatment",     status: "converted", doc: 3, branch: 2 },
+      ];
+      HIST.forEach((h, i) => {
+        if (!patients[i]) return;
+        const apptId = (d.prepare(
+          "INSERT INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, duration_minutes) VALUES (?,?,?,?,?,?,?,?) RETURNING id"
+        ).get(patients[i].id, h.branch, h.doc, h.svc, `${daysAgoStr(h.daysAgo)} ${h.time}:00`, h.status, `VESC${700000 + i}`, 60) as any)?.id;
+        if (!apptId) return;
+        // Add a practitioner session for converted appointments
+        if (h.status === "converted") {
+          const psStatus = i < 2 ? "completed" : "in_progress";
+          d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, ?, 1)").run(apptId, psStatus);
+          // Add FnO for one fully-complete appointment
+          if (i === 1) {
+            d.prepare("INSERT OR IGNORE INTO fno_sessions (appointment_id, status, submitted_at) VALUES (?, 'submitted', datetime('now'))").run(apptId);
+          }
+        }
       });
     }
   } catch (_) {}
@@ -468,6 +506,27 @@ export function initSchema(handle?: Database.Database): void {
           betaInsert.run(2, p.id, n.text, daysAgo(n.daysAgo));
         }
       }
+    }
+  } catch (_) {}
+
+  // Seed doctor_tags for demo patients so cohorts always have data
+  try {
+    const tagCount = (d.prepare("SELECT COUNT(*) as cnt FROM doctor_tags").get() as any).cnt;
+    if (tagCount === 0) {
+      const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+      const daysAgo = (n: number) => { const t = new Date(); t.setDate(t.getDate() - n); return t.toISOString().replace("T"," ").slice(0,19); };
+
+      // Alpha cohort patients (first 8): acne cleared → scar candidate
+      const alphaPatients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
+      const alphaTag = d.prepare(`INSERT INTO doctor_tags (doctor_id, patient_id, primary_concern, active_acne_status, scar_treatment_candidate, barrier_status, next_recommended_service, product_adherence_score, treatment_ready_for, created_at)
+        VALUES (1, ?, 'post_inflammatory_acne_scarring', 'resolved', 1, 'intact', 'Microneedling for Scars', 8, NULL, ?)`);
+      for (const p of alphaPatients) alphaTag.run(p.id, daysAgo(21));
+
+      // Beta cohort patients (next 6): melasma → Q-Switch ready
+      const betaPatients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 14").all().slice(8) as any[];
+      const betaTag = d.prepare(`INSERT INTO doctor_tags (doctor_id, patient_id, primary_concern, active_acne_status, scar_treatment_candidate, barrier_status, next_recommended_service, product_adherence_score, treatment_ready_for, created_at)
+        VALUES (2, ?, 'deep_dermal_melasma', 'resolved', 0, 'intact', 'Q-Switch Laser Toning', 9, 'Q_Switch_Laser', ?)`);
+      for (const p of betaPatients) betaTag.run(p.id, daysAgo(20));
     }
   } catch (_) {}
 

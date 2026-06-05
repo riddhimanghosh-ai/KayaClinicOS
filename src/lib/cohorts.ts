@@ -19,7 +19,7 @@ function todayDate(): Date {
 // Recipe Alpha — Acne → Scar transition
 // ---------------------------------------------------------------------------
 
-export function recipeAlpha(withinDays = 45): CohortRow[] {
+export function recipeAlpha(withinDays = 180): CohortRow[] {
   const cutoff = new Date(todayDate().getTime() - withinDays * 86400000)
     .toISOString()
     .slice(0, 10);
