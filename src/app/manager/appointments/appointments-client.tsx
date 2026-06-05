@@ -15,11 +15,41 @@ const HOUR_START = 8;
 const HOUR_END = 20;
 const TOTAL_HOURS = HOUR_END - HOUR_START;
 const TIMELINE_W = TOTAL_HOURS * PX_PER_HOUR; // 1800px
-const ROW_H = 110;           // px per room row
+const LANE_H = 86;           // px per lane (card height + gap)
+const LANE_PAD = 8;          // top padding inside row
 const HEADER_H = 36;
 const CARD_MIN_W = 160;      // minimum card width so text is readable
 
 const PX_PER_MIN = PX_PER_HOUR / 60;
+
+// ── Lane assignment ───────────────────────────────────────────────────────────
+// Returns a map from appointment id → lane index (0-based)
+function assignLanes(appts: AppointmentRow[]): Map<number, number> {
+  const sorted = [...appts].sort((a, b) => {
+    const aM = minutesFromStart(a.appointment_ts);
+    const bM = minutesFromStart(b.appointment_ts);
+    return aM - bM;
+  });
+  // laneEnds[i] = end pixel of the last card in lane i
+  const laneEnds: number[] = [];
+  const result = new Map<number, number>();
+  for (const a of sorted) {
+    const startPx = minutesFromStart(a.appointment_ts) * PX_PER_MIN;
+    const naturalW = getDuration(a) * PX_PER_MIN - 4;
+    const cardW = Math.max(naturalW, CARD_MIN_W);
+    const endPx = startPx + cardW;
+    // find first lane where this card doesn't overlap
+    let lane = laneEnds.findIndex(e => e <= startPx + 4); // 4px tolerance
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(endPx);
+    } else {
+      laneEnds[lane] = endPx;
+    }
+    result.set(a.id, lane);
+  }
+  return result;
+}
 
 // ── Room definitions ──────────────────────────────────────────────────────────
 type RoomKey = "consultation" | "facial" | "peel" | "laser";
@@ -195,7 +225,7 @@ export function AppointmentsClient({
     { key: "confirmed",   label: "Confirmed",          count: appts.filter(a => a.status === "confirmed").length },
     { key: "arrived",     label: "Arrived",            count: appts.filter(a => a.status === "arrived").length },
     { key: "in_session",  label: "In Session",         count: appts.filter(a => a.status === "in_session").length },
-    { key: "converted",   label: "Done — Pending FnO", count: appts.filter(a => a.status === "converted").length },
+    { key: "converted",   label: "Completed ✓",         count: appts.filter(a => a.status === "converted").length },
     { key: "rescheduled", label: "Rescheduled",        count: appts.filter(a => a.status === "rescheduled").length },
     { key: "no_show",     label: "No Show",            count: appts.filter(a => a.status === "no_show").length },
   ].filter(f => f.key === "all" || f.count > 0);
@@ -283,17 +313,25 @@ export function AppointmentsClient({
                 const bookedHours = (bookedMinutes / 60).toFixed(1);
                 const pct = Math.round((bookedMinutes / (TOTAL_HOURS * 60)) * 100);
 
+                // Lane assignment for this room
+                const laneMap = assignLanes(roomAppts);
+                const laneCount = Math.max(1, ...Array.from(laneMap.values()).map(v => v + 1));
+                const rowH = LANE_PAD + laneCount * LANE_H;
+
                 return (
                   <div key={room.key} className="flex border-b last:border-b-0">
                     {/* Room label */}
                     <div
                       className="shrink-0 border-r border-border bg-card px-4 py-3 sticky left-0 z-10 flex flex-col justify-between"
-                      style={{ width: LABEL_W, minHeight: ROW_H }}
+                      style={{ width: LABEL_W, minHeight: rowH }}
                     >
                       <div>
                         <div className="text-sm font-semibold text-foreground leading-tight">{room.label}</div>
                         {room.subtitle && (
                           <div className="text-[10px] text-amber-600 font-medium mt-0.5">{room.subtitle}</div>
+                        )}
+                        {laneCount > 1 && (
+                          <div className="text-[10px] text-violet-600 font-medium mt-0.5">{laneCount} concurrent</div>
                         )}
                       </div>
                       <div className="mt-2">
@@ -310,7 +348,7 @@ export function AppointmentsClient({
                     </div>
 
                     {/* Timeline area */}
-                    <div className="relative bg-card" style={{ width: TIMELINE_W, height: ROW_H }}>
+                    <div className="relative bg-card" style={{ width: TIMELINE_W, height: rowH }}>
                       {/* Hour grid lines */}
                       {Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => (
                         <div
@@ -327,6 +365,14 @@ export function AppointmentsClient({
                           style={{ left: i * PX_PER_HOUR + PX_PER_HOUR / 2 }}
                         />
                       ))}
+                      {/* Lane separator lines */}
+                      {laneCount > 1 && Array.from({ length: laneCount - 1 }, (_, i) => (
+                        <div
+                          key={`lane${i}`}
+                          className="absolute left-0 right-0 border-t border-dashed border-border/40"
+                          style={{ top: LANE_PAD + (i + 1) * LANE_H }}
+                        />
+                      ))}
 
                       {loading && (
                         <div className="absolute inset-0 bg-background/50 z-20 flex items-center justify-center">
@@ -341,6 +387,9 @@ export function AppointmentsClient({
                         const naturalW = dur * PX_PER_MIN - 4;
                         const width = Math.max(naturalW, CARD_MIN_W);
                         const left = mins * PX_PER_MIN;
+                        const lane = laneMap.get(a.id) ?? 0;
+                        const top = LANE_PAD + lane * LANE_H;
+                        const cardH = LANE_H - 8;
                         const clash = hasClash(a, appts);
                         const doctorShort = a.doctor_name
                           ? (a.doctor_name.startsWith("Dr") ? a.doctor_name : `Dr. ${a.doctor_name}`)
@@ -350,8 +399,8 @@ export function AppointmentsClient({
                           <button
                             key={a.id}
                             onClick={() => setSelected(a)}
-                            className={`absolute top-2 rounded-lg border text-left shadow-sm hover:shadow-md transition-all cursor-pointer ${STATUS_BG[a.status] ?? "border-border bg-card"} ${clash ? "ring-2 ring-red-400 ring-offset-1" : ""}`}
-                            style={{ left, width, bottom: 8, overflow: "hidden", zIndex: 1 }}
+                            className={`absolute rounded-lg border text-left shadow-sm hover:shadow-md transition-all cursor-pointer ${STATUS_BG[a.status] ?? "border-border bg-card"} ${clash ? "ring-2 ring-red-400 ring-offset-1" : ""}`}
+                            style={{ left, top, width, height: cardH, overflow: "hidden", zIndex: 1 }}
                           >
                             <div className="px-2.5 py-2 h-full flex flex-col justify-between gap-0.5">
                               {/* Row 1: dot + name + clash icon */}
@@ -362,14 +411,14 @@ export function AppointmentsClient({
                               </div>
                               {/* Row 2: service */}
                               <div className="text-[10px] text-muted-foreground truncate pl-3.5">{a.service_type}</div>
-                              {/* Row 3: doctor + time + FnO indicator */}
+                              {/* Row 3: doctor + time + status badge */}
                               <div className="flex items-center justify-between gap-1 pl-3.5">
                                 {doctorShort && (
                                   <span className="text-[10px] font-medium text-muted-foreground truncate">{doctorShort}</span>
                                 )}
                                 <div className="flex items-center gap-1 ml-auto shrink-0">
                                   {a.status === "converted" && (
-                                    <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded font-medium">FnO ⚠</span>
+                                    <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 rounded font-medium">Done ✓</span>
                                   )}
                                   <span className="text-[9px] text-muted-foreground/70">
                                     {a.appointment_ts.slice(11, 16)}

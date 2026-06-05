@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2,
+  ShoppingBag, MessageSquare, Stethoscope, Receipt, KeyRound, Printer, CheckCircle2, Loader2, Pencil, Tag,
 } from "lucide-react";
 import { inr } from "@/lib/utils";
 
@@ -18,8 +18,38 @@ export function serviceTypeBadgeCls(serviceType: string): string {
   return "bg-secondary text-muted-foreground border-border";
 }
 
+// ── Is this item an in-clinic procedure (not a take-home product)? ──────────
+function isClinicProcedure(item: { product?: string; name?: string; product_detail?: string }): boolean {
+  const name = (item.product ?? item.name ?? "").toLowerCase();
+  const detail = (item.product_detail ?? "").toLowerCase();
+  const combined = `${name} ${detail}`;
+
+  const PROCEDURE_KEYWORDS = [
+    "laser", "q-switch", "q switch", "carbon peel", "peel", "microneedling", "dermafrac",
+    "subcision", "prp", "gfc", "rf therapy", "thermage", "gentle touch", "hydrafacial",
+    "hydra facial", "led therapy", "led session", "botox", "filler", "injection",
+    "treatment session", "in-clinic", "in clinic", "appointment service", "session",
+    "therapy", "procedure", "peeling",
+  ];
+  return PROCEDURE_KEYWORDS.some(kw => combined.includes(kw));
+}
+
 type CheckoutPhase = "choose" | "products" | "consultation" | "treatment_otp" | "receipt";
 type ReceiptItem = { name: string; cost: number | null };
+
+// ── Line item with editable price + discount ─────────────────────────────────
+type LineItem = {
+  id: number;
+  product: string;
+  product_detail: string;
+  basePrice: number;        // fetched from catalog or entered by manager
+  discountPct: number;      // 0-100
+  priceOverride: boolean;   // true if manager manually set the price
+};
+
+function lineTotal(item: LineItem): number {
+  return Math.round(item.basePrice * (1 - item.discountPct / 100));
+}
 
 export function CheckoutFlow({
   appointmentId,
@@ -39,40 +69,76 @@ export function CheckoutFlow({
   const router = useRouter();
   const [phase, setPhase] = useState<CheckoutPhase>("choose");
   const [rxLoading, setRxLoading] = useState(false);
-  const [rxItems, setRxItems] = useState<any[]>([]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selected, setSelected] = useState<boolean[]>([]);
   const [otp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [otpConfirmed, setOtpConfirmed] = useState(false);
   const [receiptData, setReceiptData] = useState<{ items: ReceiptItem[]; total: number; type: string } | null>(null);
 
+  // ── Load prescription items, filter procedures, fetch prices ────────────────
   const loadRx = async () => {
     setRxLoading(true);
     try {
       const res = await fetch(`/api/patients/${patientId}/portfolio`);
       const data = await res.json();
       const latest = data.portfolio?.prescriptions?.[0];
-      let items: any[] = latest?.items ?? [];
-      // If no prescription items, show the appointment service as the default line item
-      if (items.length === 0) {
-        items = [{ product: serviceType, product_detail: "Appointment service", cost: null }];
-      }
-      setRxItems(items);
+      let raw: any[] = latest?.items ?? [];
+
+      // Filter out in-clinic procedures — only keep take-home products
+      const productItems = raw.filter(it => !isClinicProcedure(it));
+
+      // Build line items with catalog price lookup
+      const priceResults = await Promise.all(
+        productItems.map(it =>
+          fetch(`/api/catalog/price?name=${encodeURIComponent(it.product ?? it.name ?? "")}`)
+            .then(r => r.json())
+            .then(j => j.price as number | null)
+            .catch(() => null)
+        )
+      );
+
+      const items: LineItem[] = productItems.map((it, i) => {
+        const catalogPrice = priceResults[i];
+        const existingCost = it.cost != null ? Number(it.cost) : null;
+        const basePrice = existingCost ?? catalogPrice ?? 0;
+        return {
+          id: i,
+          product: it.product ?? it.name ?? "",
+          product_detail: it.product_detail ?? "",
+          basePrice,
+          discountPct: 0,
+          priceOverride: existingCost != null,
+        };
+      });
+
+      setLineItems(items);
       setSelected(items.map(() => true));
-    } catch {}
+    } catch (e) {
+      console.error(e);
+      setLineItems([]);
+      setSelected([]);
+    }
     setRxLoading(false);
   };
 
   const goProducts = async () => { await loadRx(); setPhase("products"); };
-  const selectedRxItems = rxItems.filter((_, i) => selected[i]);
-  const total = selectedRxItems.reduce((s, it) => s + (Number(it.cost) || 0), 0);
+
+  const selectedItems = lineItems.filter((_, i) => selected[i]);
+  const total = selectedItems.reduce((s, it) => s + lineTotal(it), 0);
+
+  const updateItem = (id: number, patch: Partial<LineItem>) => {
+    setLineItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+  };
 
   const collectAndReceipt = (type: "products" | "consultation") => {
     const items: ReceiptItem[] = type === "products"
-      ? selectedRxItems.map(it => ({ name: it.product ?? it.name ?? "", cost: it.cost ?? null }))
+      ? selectedItems.map(it => ({ name: it.product, cost: lineTotal(it) }))
       : [];
     setReceiptData({ items, total: type === "products" ? total : 0, type });
     setPhase("receipt");
   };
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   if (phase === "choose") return (
     <div className="space-y-3">
@@ -100,29 +166,123 @@ export function CheckoutFlow({
   );
 
   if (phase === "products") {
-    if (rxLoading) return <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading prescription…</div>;
+    if (rxLoading) return (
+      <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading prescription &amp; prices…
+      </div>
+    );
+
+    if (lineItems.length === 0) return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">Products only</span>
+          <button onClick={() => setPhase("choose")} className="text-xs text-muted-foreground underline hover:text-foreground">← Back</button>
+        </div>
+        <div className="rounded-xl border border-border bg-secondary/30 px-5 py-6 text-center space-y-2">
+          <div className="text-sm text-muted-foreground">No take-home products found in the prescription.</div>
+          <div className="text-xs text-muted-foreground">In-clinic procedures are handled under <strong>Treatment</strong>.</div>
+        </div>
+        <button onClick={() => setPhase("choose")} className="w-full text-xs text-muted-foreground border border-border rounded-lg py-2 hover:bg-secondary transition-colors">
+          ← Back to checkout options
+        </button>
+      </div>
+    );
+
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">Select items patient is purchasing</span>
+          <span className="text-sm font-semibold">Select &amp; price items</span>
           <button onClick={() => setPhase("choose")} className="text-xs text-muted-foreground underline hover:text-foreground">← Back</button>
         </div>
-        <div className="space-y-1.5">
-          {rxItems.map((it, i) => (
-            <label key={i} className={["flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors", selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-60"].join(" ")}>
-              <input type="checkbox" checked={selected[i]} onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))} className="h-4 w-4 rounded accent-emerald-600" />
-              <span className="flex-1 text-sm font-medium">{it.product ?? it.name}</span>
-              {it.product_detail && <span className="text-xs text-muted-foreground">{it.product_detail}</span>}
-              <span className="text-sm font-semibold tabular-nums">{it.cost != null ? inr(it.cost) : <span className="text-muted-foreground">—</span>}</span>
-            </label>
+
+        <div className="space-y-2">
+          {lineItems.map((it, i) => (
+            <div
+              key={it.id}
+              className={[
+                "rounded-lg border px-3 py-2.5 transition-colors",
+                selected[i] ? "border-emerald-300 bg-emerald-50" : "border-border bg-card opacity-60",
+              ].join(" ")}
+            >
+              {/* Row 1: checkbox + name + detail */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected[i]}
+                  onChange={() => setSelected(s => s.map((v, idx) => idx === i ? !v : v))}
+                  className="h-4 w-4 rounded accent-emerald-600 mt-0.5 shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold leading-tight">{it.product}</div>
+                  {it.product_detail && (
+                    <div className="text-xs text-muted-foreground mt-0.5">{it.product_detail}</div>
+                  )}
+                </div>
+                <div className="text-sm font-bold tabular-nums text-emerald-700 shrink-0">
+                  {inr(lineTotal(it))}
+                </div>
+              </label>
+
+              {/* Row 2: price + discount editors (only when selected) */}
+              {selected[i] && (
+                <div className="mt-2 ml-7 flex items-center gap-2 flex-wrap">
+                  {/* Base price */}
+                  <div className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1">
+                    <Pencil className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-[11px] text-muted-foreground">₹</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={it.basePrice}
+                      onChange={e => updateItem(it.id, { basePrice: Number(e.target.value) || 0, priceOverride: true })}
+                      className="w-20 text-xs font-semibold text-right focus:outline-none bg-transparent tabular-nums"
+                    />
+                  </div>
+                  {/* Discount */}
+                  <div className="flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1">
+                    <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={it.discountPct}
+                      onChange={e => updateItem(it.id, { discountPct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })}
+                      className="w-10 text-xs font-semibold text-right focus:outline-none bg-transparent tabular-nums"
+                    />
+                    <span className="text-[11px] text-muted-foreground">% off</span>
+                  </div>
+                  {/* Computed final */}
+                  {it.discountPct > 0 && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="line-through text-muted-foreground tabular-nums">{inr(it.basePrice)}</span>
+                      <span className="text-emerald-700 font-semibold tabular-nums">{inr(lineTotal(it))}</span>
+                    </div>
+                  )}
+                  {it.basePrice === 0 && (
+                    <span className="text-[11px] text-amber-600 font-medium">⚠ Enter price</span>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
+
         <div className="flex items-center justify-between pt-1 border-t border-border">
-          <div className="text-sm"><span className="text-muted-foreground">{selectedRxItems.length} items · </span><span className="font-bold text-base">{inr(total)}</span></div>
-          <button onClick={() => collectAndReceipt("products")} disabled={selectedRxItems.length === 0} className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-semibold transition-colors">
+          <div className="text-sm">
+            <span className="text-muted-foreground">{selectedItems.length} items · </span>
+            <span className="font-bold text-base">{inr(total)}</span>
+          </div>
+          <button
+            onClick={() => collectAndReceipt("products")}
+            disabled={selectedItems.length === 0 || selectedItems.some(it => it.basePrice === 0)}
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-semibold transition-colors"
+          >
             <Receipt className="h-4 w-4" />Collect {inr(total)} →
           </button>
         </div>
+        {selectedItems.some(it => it.basePrice === 0) && (
+          <p className="text-xs text-amber-600 text-right">Enter a price for all items before collecting.</p>
+        )}
       </div>
     );
   }

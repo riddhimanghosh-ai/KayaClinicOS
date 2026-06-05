@@ -61,7 +61,22 @@ export default function LoginPage() {
             Continue your <span style={{ color: 'var(--brand)' }}>care</span>.
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 32 }}>
+          {/* Demo hint */}
+          <div style={{
+            marginTop: 20,
+            padding: '8px 12px',
+            background: 'var(--paper-2)',
+            border: '1px dashed var(--rule)',
+            borderRadius: 8,
+            fontFamily: 'var(--mono)',
+            fontSize: 11,
+            color: 'var(--mute)',
+            lineHeight: 1.5,
+          }}>
+            <span style={{ color: 'var(--brand)', fontWeight: 600 }}>Demo:</span> enter any 10-digit mobile number and any OTP code to sign in.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 16 }}>
 
             {/* Phone field — always shown */}
             <div className={`field ${error && phase === 'phone' ? 'error' : ''}`}>
