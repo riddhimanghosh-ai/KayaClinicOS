@@ -565,6 +565,41 @@ export function initSchema(handle?: Database.Database): void {
     d.prepare("UPDATE branches SET zone_name = 'Zone ' || id, zone_manager_name = 'Zone Manager' WHERE zone_name IS NULL OR zone_name = ''").run();
   } catch {}
 
+  // ── Demo reset: always wipe treatment & FnO sessions on app start ──────────
+  // This ensures the ops page starts fresh every time the server boots so the
+  // full entry flow can be demoed repeatedly without manual cleanup.
+  try {
+    d.exec("DELETE FROM fno_sessions");
+    d.exec("DELETE FROM practitioner_sessions");
+    // Reset appointments: arrived/in_session/converted → arrived (all "ready to start")
+    d.prepare(`
+      UPDATE appointments
+      SET status = 'arrived'
+      WHERE status IN ('arrived', 'in_session', 'converted')
+        AND date(appointment_ts) >= date('now', '-30 days')
+    `).run();
+    // Re-seed one "in-progress" and one "complete+FnO" example so all filter tabs show data
+    const opsAppts = d.prepare(
+      "SELECT id FROM appointments WHERE status = 'arrived' ORDER BY appointment_ts DESC LIMIT 6"
+    ).all() as any[];
+    if (opsAppts.length >= 2) {
+      // Mark second appointment as converted (treatment done, pending FnO)
+      d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[1].id);
+      d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(opsAppts[1].id);
+      // Mark fourth as converted + in-progress treatment
+      if (opsAppts[3]) {
+        d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[3].id);
+        d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'in_progress', 1)").run(opsAppts[3].id);
+      }
+      // Mark fifth as fully complete (treatment done + FnO submitted)
+      if (opsAppts[4]) {
+        d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(opsAppts[4].id);
+        d.prepare("INSERT OR IGNORE INTO practitioner_sessions (appointment_id, status, consent_signed) VALUES (?, 'completed', 1)").run(opsAppts[4].id);
+        d.prepare("INSERT OR IGNORE INTO fno_sessions (appointment_id, status, submitted_at) VALUES (?, 'submitted', datetime('now'))").run(opsAppts[4].id);
+      }
+    }
+  } catch (_) {}
+
   // Seed prescription-matched products into catalog so checkout can auto-fill prices.
   // Safe to run multiple times — INSERT OR IGNORE on unique SKU.
   try {
