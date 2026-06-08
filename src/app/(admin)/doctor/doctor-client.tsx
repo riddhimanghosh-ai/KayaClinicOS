@@ -1715,28 +1715,38 @@ function ConsultSection({
     }, 1200);
   };
 
-  // ── Post-consult note state ───────────────────────────────────────────────
-  const [showNoteForm, setShowNoteForm] = useState(false);
-  const [note, setNote]               = useState("");
-  const [history, setHistory]         = useState<Array<{role:"doctor"|"system";content:any}>>([]);
-  const [generating, setGenerating]   = useState(false);
-  const [pending, start]              = useTransition();
+  // ── Post-consult recording state (mirrors consultation recording) ───────────
+  const [noteRecording, setNoteRecording]     = useState(false);
+  const [notePaused, setNotePaused]           = useState(false);
+  const [noteElapsed, setNoteElapsed]         = useState(0);
+  const [noteProcessing, setNoteProcessing]   = useState(false);
+  const [noteResult, setNoteResult]           = useState<Record<string,string> | null>(null);
+  const noteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopNoteTimer = () => { if (noteTimerRef.current) { clearInterval(noteTimerRef.current); noteTimerRef.current = null; } };
+  useEffect(() => () => stopNoteTimer(), []);
 
-  const generateSampleNote = async () => {
-    setGenerating(true);
-    try { await fetch(`/api/patients/${patientId}/generate-sample-note`, { method: "POST" }); onNoteSaved(); }
-    finally { setGenerating(false); }
+  const startNoteRecording = () => {
+    setNoteResult(null);
+    setNoteRecording(true); setNotePaused(false); setNoteElapsed(0);
+    noteTimerRef.current = setInterval(() => setNoteElapsed(e => e + 1), 1000);
   };
-  const send = () => {
-    if (!note.trim()) return;
-    const text = note.trim(); setNote("");
-    setHistory(h => [...h, { role: "doctor", content: text }]);
-    start(async () => {
-      const res  = await fetch("/api/tags/extract", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ patient_id: patientId, note: text }) });
-      const data = await res.json();
-      setHistory(h => [...h, { role: "system", content: data.saved }]);
+  const pauseNoteRecording  = () => { setNotePaused(true);  stopNoteTimer(); };
+  const resumeNoteRecording = () => { setNotePaused(false); noteTimerRef.current = setInterval(() => setNoteElapsed(e => e + 1), 1000); };
+  const endNoteRecording    = () => {
+    stopNoteTimer(); setNoteRecording(false); setNotePaused(false); setNoteProcessing(true);
+    setTimeout(() => {
+      setNoteProcessing(false);
+      setNoteResult({
+        acne_status:         "mild hormonal — jawline, reducing",
+        barrier_status:      "intact post-peel, no sensitivity",
+        pigmentation_score:  "down ~14% from baseline",
+        treatment_response:  "positive — phase 2 tolerated well",
+        next_recommendation: "microneedling for residual scarring",
+        sun_protection:      "compliant — SPF 50 daily",
+        lifestyle_notes:     "diet improved, stress elevated",
+      });
       onNoteSaved();
-    });
+    }, 900);
   };
 
   // ── Prescription state ────────────────────────────────────────────────────
@@ -1786,19 +1796,35 @@ function ConsultSection({
         {/* ── 2. TWO SMALL CIRCLES ── */}
         <div className="flex items-start justify-between border-t border-b border-border py-5 px-6">
 
-          {/* LEFT: Post-consultation */}
+          {/* LEFT: Post-consultation recording */}
           <div className="flex flex-col items-center gap-2.5">
-            <button
-              onClick={() => setShowNoteForm(v => !v)}
-              className={["h-16 w-16 rounded-full flex items-center justify-center shadow-md transition-all",
-                showNoteForm
-                  ? "bg-foreground text-background hover:bg-foreground/80 active:scale-95"
-                  : "bg-zinc-700 text-white hover:bg-zinc-600 active:scale-95",
-              ].join(" ")}
-            >
-              <MicOff className="h-5 w-5" />
-            </button>
-            <span className="text-xs font-medium text-foreground">Post-consult</span>
+            {noteRecording ? (
+              <button onClick={endNoteRecording}
+                className="relative h-16 w-16 rounded-full bg-destructive text-white flex items-center justify-center shadow-md">
+                <span className={`absolute inset-0 rounded-full bg-destructive/30 ${notePaused ? "" : "animate-ping"}`} />
+                <Square className="h-5 w-5 relative z-10" />
+              </button>
+            ) : (
+              <button onClick={startNoteRecording} disabled={noteProcessing}
+                className={["h-16 w-16 rounded-full flex items-center justify-center shadow-md transition-all",
+                  noteResult  ? "bg-zinc-400 text-white cursor-default"
+                  : noteProcessing ? "bg-zinc-400 text-white cursor-default"
+                  : "bg-zinc-700 text-white hover:bg-zinc-600 active:scale-95"].join(" ")}>
+                {noteProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <MicOff className="h-5 w-5" />}
+              </button>
+            )}
+            <span className="text-xs font-medium text-foreground">
+              {noteRecording ? <>{notePaused ? "Paused" : "Recording"} · {fmtClock(noteElapsed)}</>
+                : noteProcessing ? "Processing…"
+                : noteResult ? "Capture done"
+                : "Post-consult"}
+            </span>
+            {noteRecording && (
+              <button onClick={notePaused ? resumeNoteRecording : pauseNoteRecording}
+                className="text-[10px] text-muted-foreground underline hover:text-foreground">
+                {notePaused ? "Resume" : "Pause"}
+              </button>
+            )}
           </div>
 
           {/* RIGHT: Prescription */}
@@ -1848,41 +1874,24 @@ function ConsultSection({
           </div>
         )}
 
-        {/* ── 4. Post-consult note form ── */}
-        {showNoteForm && (
-          <div className="space-y-3 border-t border-border pt-4">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Post-consultation notes</div>
-            <div className="space-y-2">
-              {history.length === 0 ? (
-                <div className="rounded-md border border-dashed border-border bg-secondary/40 p-4 text-center text-xs text-muted-foreground">
-                  Try: "Acne cleared, mild boxcar scars on left cheek, barrier intact, ready for microneedling."
-                </div>
-              ) : (
-                history.map((msg, i) => (
-                  <div key={i} className={`rounded-md p-3 ${msg.role === "doctor" ? "bg-secondary text-foreground ml-6" : "bg-accent/5 border border-accent/30 mr-6"}`}>
-                    {msg.role === "doctor"
-                      ? <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
-                      : <div>
-                          <div className="text-xs font-medium uppercase tracking-wide text-accent mb-2">Extracted tags</div>
-                          <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(stripIds(msg.content), null, 2)}</pre>
-                        </div>}
-                  </div>
-                ))
-              )}
+        {/* ── 4. Post-consult results ── */}
+        {noteProcessing && (
+          <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+            <Loader2 className="h-4 w-4 animate-spin" /> Extracting structured tags…
+          </div>
+        )}
+        {noteResult && (
+          <div className="space-y-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Post-consult tags — flowing into cohort engine
             </div>
-            <div className="flex gap-2">
-              <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Dump observations…" rows={2}
-                onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); }} />
-              <div className="flex flex-col gap-2">
-                <Button onClick={send} disabled={pending || !note.trim()} size="sm">
-                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Extract
-                </Button>
-              </div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(noteResult).map(([k, v]) => (
+                <Badge key={k} variant="accent" className="text-[11px]">
+                  {formatLabel(k)}: {v}
+                </Badge>
+              ))}
             </div>
-            <button onClick={generateSampleNote} disabled={generating}
-              className="flex items-center gap-1.5 text-xs text-accent border border-accent/30 rounded-md px-2.5 py-1.5 bg-accent/5 hover:bg-accent/10 transition-colors disabled:opacity-50">
-              {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Generate sample note
-            </button>
           </div>
         )}
 
