@@ -248,8 +248,7 @@ function PortfolioView({
 
   const handleNoteSaved = () => {
     onTagSaved();
-    setSummaryKey(k => k + 1); // force SummaryPane to re-fetch
-    setActiveTab("visits");   // auto-switch to Visits tab
+    setSummaryKey(k => k + 1);
   };
 
   return (
