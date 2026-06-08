@@ -294,7 +294,7 @@ export function ZoneManagerClient({
           <div className="border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Appliances &amp; Facilities</span>
+              <span className="text-sm font-semibold">Unavailable Appliances &amp; Facilities</span>
             </div>
             <div className="space-y-2">
               {clinicStatus.map(cs => {
@@ -315,7 +315,7 @@ export function ZoneManagerClient({
                         Store closed
                       </div>
                     )}
-                    {cs.doctor_on_leave && (
+                    {!!cs.doctor_on_leave && (
                       <div className="text-[11px] text-muted-foreground font-mono px-2 py-1 bg-secondary border border-border">
                         Doctor on leave{cs.doctor_leave_note ? ` — ${cs.doctor_leave_note}` : ""}
                       </div>
