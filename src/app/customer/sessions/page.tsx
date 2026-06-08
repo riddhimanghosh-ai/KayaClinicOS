@@ -519,11 +519,11 @@ const HistoryDesktop = () => {
             {/* Next appointment */}
             <div style={{ flex: 1.4, background: 'var(--ink)', color: 'var(--paper)', padding: '18px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.70)', marginBottom: 8 }}>
                   Next visit · {next.in}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 600 }}>{next.doc}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>{next.treat} · {next.loc}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 3 }}>{next.treat} · {next.loc}</div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 400, letterSpacing: '-0.02em', marginTop: 12 }}>
                   {next.d} {next.dt} {next.mon} · {next.time}
                 </div>
@@ -532,7 +532,7 @@ const HistoryDesktop = () => {
                 {next.confirm && (
                   <button style={{ background: 'var(--paper)', color: 'var(--ink)', border: 'none', padding: '9px 18px', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Confirm</button>
                 )}
-                <button style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.18)', padding: '8px 18px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Reschedule</button>
+                <button style={{ background: 'transparent', color: 'rgba(255,255,255,0.80)', border: '1px solid rgba(255,255,255,0.40)', padding: '8px 18px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Reschedule</button>
               </div>
             </div>
             {/* Active package */}
