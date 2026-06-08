@@ -1719,7 +1719,7 @@ function ConsultSection({
   const [notePaused, setNotePaused]           = useState(false);
   const [noteElapsed, setNoteElapsed]         = useState(0);
   const [noteProcessing, setNoteProcessing]   = useState(false);
-  const [noteResult, setNoteResult]           = useState<Record<string,string> | null>(null);
+  const [noteResult, setNoteResult]           = useState<{ note: string; tags: Record<string,string> } | null>(null);
   const noteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopNoteTimer = () => { if (noteTimerRef.current) { clearInterval(noteTimerRef.current); noteTimerRef.current = null; } };
   useEffect(() => () => stopNoteTimer(), []);
@@ -1736,13 +1736,16 @@ function ConsultSection({
     setTimeout(() => {
       setNoteProcessing(false);
       setNoteResult({
-        acne_status:         "mild hormonal — jawline, reducing",
-        barrier_status:      "intact post-peel, no sensitivity",
-        pigmentation_score:  "down ~14% from baseline",
-        treatment_response:  "positive — phase 2 tolerated well",
-        next_recommendation: "microneedling for residual scarring",
-        sun_protection:      "compliant — SPF 50 daily",
-        lifestyle_notes:     "diet improved, stress elevated",
+        note: "Acne has cleared really well — the hormonal jawline breakouts are almost gone, down to maybe one or two spots. The post-peel barrier is intact, no unusual sensitivity or dryness. PIH is visibly reducing, probably around 14% better than baseline from what I can see. She is compliant with the SPF, which is great. The scar texture on the left cheek — the boxcar ones — is still there and that's our next focus. I think she's ready for microneedling. Diet has improved, she's added eggs and lentils like we discussed. She did mention stress at work is elevated, which could be slowing the hormonal recovery — I've asked her to monitor. Overall, phase 2 outcome is positive. Ready to start phase 3.",
+        tags: {
+          acne_status:         "mild hormonal — jawline, reducing",
+          barrier_status:      "intact post-peel, no sensitivity",
+          pigmentation_score:  "down ~14% from baseline",
+          treatment_response:  "positive — phase 2 tolerated well",
+          next_recommendation: "microneedling for residual scarring",
+          sun_protection:      "compliant — SPF 50 daily",
+          lifestyle_notes:     "diet improved, stress elevated",
+        },
       });
       onNoteSaved();
     }, 900);
@@ -1891,16 +1894,27 @@ function ConsultSection({
           <details className="rounded-lg border border-border overflow-hidden">
             <summary className="flex items-center justify-between px-4 py-3 cursor-pointer bg-secondary/20 hover:bg-secondary/40 transition-colors select-none list-none">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Post-consult tags
+                Post-consult capture
               </span>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </summary>
-            <div className="px-4 py-4 flex flex-wrap gap-1.5">
-              {Object.entries(noteResult).map(([k, v]) => (
-                <Badge key={k} variant="accent" className="text-[11px]">
-                  {formatLabel(k)}: {v}
-                </Badge>
-              ))}
+            <div className="px-4 py-4 space-y-4">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Doctor's observations</div>
+                <div className="rounded-md border border-border bg-secondary/20 p-3 text-sm leading-relaxed">
+                  {noteResult.note}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Extracted tags — cohort engine</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(noteResult.tags).map(([k, v]) => (
+                    <Badge key={k} variant="accent" className="text-[11px]">
+                      {formatLabel(k)}: {v}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             </div>
           </details>
         )}
