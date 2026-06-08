@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X,
-  UserRound, CalendarDays, Zap, Brain, FlaskConical, Smartphone,
+  CalendarDays, Zap, Brain, FlaskConical, Smartphone, Users, ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -13,14 +13,15 @@ const NAV = [
   { href: "/",              label: "Super Admin",    icon: LayoutDashboard },
   { href: "/manager/appointments", label: "Clinic Manager", icon: Activity },
   { href: "/doctor",        label: "Doctor Console", icon: Stethoscope },
-  { href: "/customer/login",label: "Customer App",   icon: Smartphone },
+  { href: "/customer/dashboard", label: "Customer App",   icon: Smartphone },
 ];
 
 const MANAGER_SUBNAV = [
   { href: "/manager/appointments", label: "Schedule Board",           icon: CalendarDays },
   { href: "/manager/today",        label: "Daily Ops",                icon: Zap },
   { href: "/manager/ops",          label: "Treatment & FnO",          icon: FlaskConical },
-  { href: "/manager/patients",     label: "Patients, Catalog & Status", icon: UserRound },
+  { href: "/manager/clinic-status", label: "Clinic Status",           icon: Activity },
+  { href: "/manager/catalog",      label: "Catalogue",                icon: ShoppingBag },
   { href: "/manager",              label: "Cohorts & Outreach",       icon: Sparkles },
 ];
 
@@ -38,7 +39,7 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
         const active =
           href === "/"
             ? pathname === "/"
-            : href === "/customer/login"
+            : href === "/customer/dashboard"
             ? pathname.startsWith("/customer")
             : href === "/manager/appointments"
             ? pathname.startsWith("/manager")

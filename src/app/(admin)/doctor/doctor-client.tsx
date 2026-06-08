@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import Image from "next/image";
-import { Loader2, Send, UserRound, Mic, MicOff, Sparkles, Upload, Pause, Play, Square, ShieldCheck, Printer, Pencil, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, UserRound, Mic, MicOff, Sparkles, Upload, Pause, Play, Square, ShieldCheck, Printer, Pencil, ChevronDown, CheckCircle2, Image as ImageIcon } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -15,11 +15,24 @@ import { PrescriptionDocument, SAMPLE_RX } from "@/components/prescription-docum
 import type { Patient, PatientPortfolio, CheckIn, RawNote, RxRow, Consultation, PatientAttribute, SkinPhoto } from "@/lib/types";
 
 type CheckInLite = CheckIn & { patient_name: string; branch_name: string };
+type TodayAppt = { id: number; patient_id: number; patient_name: string; status: string; appointment_ts: string; branch_name: string | null };
+
+const STATUS_LABEL: Record<string, string> = {
+  booked: "Booked", confirmed: "Confirmed", arrived: "Arrived",
+  in_consultation: "In Consult", consultation_done: "Consult Done",
+  in_treatment: "In Treatment", treatment_done: "Tx Done",
+};
+const STATUS_DOT: Record<string, string> = {
+  booked: "bg-slate-300", confirmed: "bg-blue-400", arrived: "bg-amber-400",
+  in_consultation: "bg-violet-500", consultation_done: "bg-teal-500",
+  in_treatment: "bg-orange-500", treatment_done: "bg-emerald-500",
+};
 
 export function DoctorClient({
   patients,
   checkIns,
   completedToday,
+  todayAppointments,
   initialId,
   initialPortfolio,
   doctorName,
@@ -29,6 +42,7 @@ export function DoctorClient({
   patients: Patient[];
   checkIns: CheckInLite[];
   completedToday: Array<{ id: number; name: string; fee?: number }>;
+  todayAppointments: TodayAppt[];
   initialId: number;
   initialPortfolio: PatientPortfolio | null;
   doctorName: string;
@@ -41,6 +55,11 @@ export function DoctorClient({
 
   const [liveCheckIns, setLiveCheckIns] = useState(checkIns);
   const [completedPatients, setCompletedPatients] = useState<Array<{id: number; name: string; fee?: number}>>(completedToday);
+
+  // IDs already in the check-in queue — avoid duplicating in Today's Schedule
+  const checkInIds = new Set(liveCheckIns.map(c => c.patient_id));
+  // Today's appointments not yet in the live check-in queue
+  const pendingAppts = todayAppointments.filter(a => !checkInIds.has(a.patient_id));
 
   const dismissCheckIn = async (patientId: number, patientName: string, fee?: number) => {
     const ci = liveCheckIns.find(c => c.patient_id === patientId);
@@ -248,7 +267,7 @@ function PortfolioView({
                         : "text-success border-success/40 hover:bg-success/5"
                     }`}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {justCompleted && <CheckCircle2 className="h-3.5 w-3.5" />}
                     {justCompleted ? "Consultation complete ✓" : "Complete consultation"}
                   </Button>
                 )}
@@ -273,9 +292,7 @@ function PortfolioView({
         <TabsList>
           <TabsTrigger value="live">Consult</TabsTrigger>
           <TabsTrigger value="visits">Visits</TabsTrigger>
-          <TabsTrigger value="rx">Prescriptions</TabsTrigger>
           <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
-          <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
         <TabsContent value="live">
@@ -298,14 +315,8 @@ function PortfolioView({
             patientId={p.id}
           />
         </TabsContent>
-        <TabsContent value="rx">
-          <RxTab portfolio={portfolio} weightText={weightText} onSaved={onTagSaved} patientId={p.id} />
-        </TabsContent>
         <TabsContent value="timeline">
           <TimelinePane portfolio={portfolio} />
-        </TabsContent>
-        <TabsContent value="tags">
-          <TagsPane portfolio={portfolio} />
         </TabsContent>
       </Tabs>
     </div>
@@ -443,14 +454,45 @@ function VisitsTab({
   const selectedS = portfolio.sessions.find(s => s.id === selectedSession);
   const selectedTags = selectedS ? (tagsBySession[selectedS.id] ?? []) : [];
   const selectedSummary = selectedS ? summaryByDate[selectedS.session_date] : null;
+  // Find the prescription linked to the selected session (fall back to most recent)
+  const selectedRx = selectedS
+    ? ((portfolio.prescriptions as any[]).find(rx => rx.session_id === selectedS.id)
+        ?? (portfolio.prescriptions as any[])[0]
+        ?? null)
+    : null;
+
+  // Last session and remaining sessions summary
+  const lastSession = portfolio.sessions[0] ?? null;
+  const totalRemaining = portfolio.packages.reduce((s, p) => s + Math.max(0, p.sessions_total - p.sessions_used), 0);
 
   return (
     <div className="space-y-4">
-      {/* Clinical narrative — compact */}
-      {summaryData?.narrative && (
-        <div className="flex items-start gap-2.5 rounded-lg bg-accent/5 border border-accent/20 px-3.5 py-2.5">
-          <Sparkles className="h-3.5 w-3.5 text-accent mt-0.5 shrink-0" />
-          <p className="text-xs text-foreground leading-relaxed">{summaryData.narrative}</p>
+
+      {/* Last visit + remaining sessions summary bar */}
+      {(lastSession || totalRemaining > 0) && (
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
+          {lastSession && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Last visit</span>
+              <span className="font-mono text-xs font-semibold text-foreground">{lastSession.session_date}</span>
+              {lastSession.service_name_snapshot && (
+                <span className="text-xs text-muted-foreground truncate">· {lastSession.service_name_snapshot}</span>
+              )}
+              {lastSession.doctor_name && (
+                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                  · {lastSession.doctor_name.startsWith("Dr") ? lastSession.doctor_name : `Dr. ${lastSession.doctor_name}`}
+                </span>
+              )}
+            </div>
+          )}
+          {lastSession && totalRemaining > 0 && <span className="text-border">|</span>}
+          {totalRemaining > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Remaining</span>
+              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-bold">{totalRemaining} session{totalRemaining !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground">across packages</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -543,58 +585,73 @@ function VisitsTab({
                     <span className="text-xs text-muted-foreground capitalize">{sType} session</span>
                   </div>
 
-                  {/* Treatment notes */}
-                  {treatmentNotes && (
+                  {/* Prescription for this visit */}
+                  {selectedRx ? (
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Session Notes</div>
-                      <p className="text-sm text-foreground leading-snug whitespace-pre-wrap bg-secondary/30 rounded-lg px-3 py-2.5">{treatmentNotes}</p>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Prescription</div>
+                      {selectedRx.clinical_recommendation && (
+                        <p className="text-xs text-foreground leading-snug bg-secondary/30 rounded-lg px-3 py-2.5 mb-3 whitespace-pre-wrap">
+                          {selectedRx.clinical_recommendation}
+                        </p>
+                      )}
+                      {selectedRx.items?.length > 0 && (
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-secondary/40 border-b border-border">
+                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Problem</th>
+                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Product / Medicine</th>
+                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Dosage</th>
+                                <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Cost</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                              {(selectedRx.items as any[]).map((row: any, i: number) => (
+                                <tr key={i} className="hover:bg-secondary/20">
+                                  <td className="px-3 py-2 align-top">
+                                    {row.problem ? (
+                                      <div>
+                                        <span className="font-medium text-foreground">{row.problem}</span>
+                                        {row.problem_type && (
+                                          <span className={`ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${row.problem_type === "chronic" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                                            {row.problem_type}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 align-top">
+                                    <div className="font-medium text-foreground">{row.product}</div>
+                                    {row.product_detail && <div className="text-[10px] text-muted-foreground mt-0.5">{row.product_detail}</div>}
+                                  </td>
+                                  <td className="px-3 py-2 align-top">
+                                    <div>{row.dosage}</div>
+                                    {row.dosage_detail && <div className="text-[10px] text-muted-foreground mt-0.5">{row.dosage_detail}</div>}
+                                  </td>
+                                  <td className="px-3 py-2 align-top text-right font-mono">
+                                    {row.cost != null ? inr(row.cost) : <span className="text-muted-foreground text-[10px]">TBD</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Visit summary bullets */}
-                  {selectedSummary?.bullets?.length > 0 && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Visit Summary</div>
-                      <ul className="space-y-1.5">
-                        {selectedSummary.bullets.map((b: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
-                            <span className="text-foreground leading-snug">{b}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Clinical tags */}
-                  {selectedTags.length > 0 && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Clinical Tags</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedTags.map((t: any) => t.primary_concern && (
-                          <Badge key={t.id} variant="outline" className="text-[11px]">{formatLabel(t.primary_concern)}</Badge>
-                        ))}
+                  ) : (
+                    /* Fallback: session notes when no prescription linked */
+                    treatmentNotes ? (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Session Notes</div>
+                        <p className="text-sm text-foreground leading-snug whitespace-pre-wrap bg-secondary/30 rounded-lg px-3 py-2.5">{treatmentNotes}</p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Rx + tagline */}
-                  {selectedSummary?.prescription && (
-                    <div className="rounded-md bg-secondary border border-border px-3 py-2 text-[11px] text-muted-foreground">
-                      <span className="font-semibold">Rx: </span>{selectedSummary.prescription}
-                    </div>
-                  )}
-                  {selectedSummary?.tagLine && (
-                    <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-[11px] text-destructive">
-                      {selectedSummary.tagLine}
-                    </div>
-                  )}
-
-                  {/* Empty state */}
-                  {!treatmentNotes && !selectedSummary?.bullets?.length && selectedTags.length === 0 && !selectedSummary?.prescription && (
-                    <div className="text-center py-6 text-xs text-muted-foreground">
-                      No clinical notes recorded for this visit.
-                    </div>
+                    ) : (
+                      <div className="text-center py-6 text-xs text-muted-foreground">
+                        No prescription recorded for this visit.
+                      </div>
+                    )
                   )}
                 </div>
               );
@@ -1248,40 +1305,97 @@ function LiveConsultPane({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Recording status / controls */}
-          {recording ? (
-            <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3">
-              <span className={`h-3 w-3 rounded-full bg-destructive ${paused ? "" : "animate-pulse"}`} />
-              <span className="text-sm font-medium text-destructive">
-                {paused ? "Paused" : "Recording"} · {fmtClock(elapsed)}
+
+          {/* ── Two circle buttons ── */}
+          <div className="flex items-end justify-between gap-4 py-2">
+
+            {/* BIG circle — consultation recording */}
+            <div className="flex flex-col items-center gap-2">
+              {recording ? (
+                /* Active recording state */
+                <button
+                  onClick={endRecording}
+                  className="relative h-20 w-20 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg ring-4 ring-destructive/25 transition-all"
+                  title="End recording"
+                >
+                  <span className={`absolute inset-0 rounded-full bg-destructive/30 ${paused ? "" : "animate-ping"}`} />
+                  <Square className="h-7 w-7 relative z-10" />
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  disabled={processing}
+                  className={[
+                    "h-20 w-20 rounded-full flex items-center justify-center shadow-md transition-all",
+                    result
+                      ? "bg-muted/40 text-muted-foreground/50 cursor-default"
+                      : processing
+                      ? "bg-muted/40 text-muted-foreground/50 cursor-default"
+                      : "bg-foreground text-background hover:bg-foreground/80 active:scale-95",
+                  ].join(" ")}
+                  title="Start consultation recording"
+                >
+                  {processing
+                    ? <Loader2 className="h-7 w-7 animate-spin" />
+                    : <Mic className="h-7 w-7" />}
+                </button>
+              )}
+              <span className={[
+                "text-[11px] font-medium text-center leading-tight max-w-[88px]",
+                result ? "text-muted-foreground/50" : "text-muted-foreground",
+              ].join(" ")}>
+                {recording
+                  ? <>{paused ? "Paused" : "Recording"} · {fmtClock(elapsed)}</>
+                  : processing
+                  ? "Transcribing…"
+                  : result
+                  ? "Recording done"
+                  : "Start recording"}
               </span>
-              <div className="ml-auto flex gap-2">
-                {paused ? (
-                  <Button size="sm" variant="outline" onClick={resumeRecording}>
-                    <Play className="h-4 w-4" /> Resume
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={pauseRecording}>
-                    <Pause className="h-4 w-4" /> Pause
-                  </Button>
-                )}
-                <Button size="sm" variant="destructive" onClick={endRecording}>
-                  <Square className="h-4 w-4" /> End &amp; transcribe
-                </Button>
-              </div>
+              {/* Pause / resume inline — only when recording */}
+              {recording && (
+                <button
+                  onClick={paused ? resumeRecording : pauseRecording}
+                  className="text-[10px] text-muted-foreground underline hover:text-foreground transition-colors"
+                >
+                  {paused ? "Resume" : "Pause"}
+                </button>
+              )}
             </div>
-          ) : processing ? (
+
+            {/* SMALL circle — start prescription */}
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => setShowRxRecorder(v => !v)}
+                className={[
+                  "h-12 w-12 rounded-full flex items-center justify-center shadow-sm transition-all border",
+                  (recording || (!result && !showRxRecorder))
+                    ? "bg-muted/20 text-muted-foreground/40 border-border/40 backdrop-blur-sm cursor-default"
+                    : showRxRecorder
+                    ? "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95"
+                    : "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95",
+                ].join(" ")}
+                title={showRxRecorder ? "Close prescription" : "Start prescription"}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <span className={[
+                "text-[11px] font-medium",
+                (recording || (!result && !showRxRecorder)) ? "text-muted-foreground/40" : "text-muted-foreground",
+              ].join(" ")}>
+                {showRxRecorder ? "Close Rx" : "Prescription"}
+              </span>
+            </div>
+          </div>
+
+          {/* Processing indicator */}
+          {processing && (
             <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
               <Loader2 className="h-4 w-4 animate-spin" /> Transcribing &amp; extracting data points…
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={startRecording}>
-                <Mic className="h-4 w-4" /> Start consultation recording
-              </Button>
-            </div>
           )}
 
+          {/* Demo paste input */}
           {showPaste && !recording && !processing && (
             <div className="space-y-2">
               <Textarea
@@ -1332,19 +1446,7 @@ function LiveConsultPane({
             </div>
           )}
 
-          {/* Prescription shortcuts — visible as soon as not actively recording */}
-          {!recording && (
-            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-              <Button size="sm" onClick={() => setShowRxRecorder(v => !v)}>
-                <Mic className="h-4 w-4" />
-                {showRxRecorder ? "Close prescription" : "Start prescription"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onWriteRx}>
-                Open Rx tab →
-              </Button>
-            </div>
-          )}
-
+          {/* Prescription form */}
           {showRxRecorder && (
             <div className="border-t border-border pt-3">
               <AddPrescriptionForm
@@ -1379,26 +1481,6 @@ function LiveConsultPane({
         </Card>
       )}
 
-      {portfolio.consultations.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Past consultations</CardTitle>
-            <CardDescription>{portfolio.consultations.length} on file · transcripts masked</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {portfolio.consultations.map((c) => (
-              <details key={c.id} className="rounded-md border border-border">
-                <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">
-                  {c.created_at}{c.duration_sec ? ` · ${fmtClock(c.duration_sec)}` : ""}
-                </summary>
-                <div className="px-3 py-2 text-sm whitespace-pre-wrap bg-secondary/20 leading-relaxed">
-                  {c.transcript_masked}
-                </div>
-              </details>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -1797,15 +1879,6 @@ function SummaryPane({ patientId }: { patientId: number }) {
               )}
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
-              {/* AI bullet points */}
-              <ul className="space-y-1.5">
-                {v.bullets.map((b, j) => (
-                  <li key={j} className="flex items-start gap-2 text-sm">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
-                    <span className="text-foreground leading-snug">{b}</span>
-                  </li>
-                ))}
-              </ul>
               {/* Clinical tags */}
               {v.tagLine && (
                 <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-1.5 text-[11px] text-destructive">
@@ -2063,11 +2136,11 @@ function AddPrescriptionForm({
   return (
     <div className="space-y-4">
 
-      {/* ── Idle: three entry options ── */}
+      {/* ── Idle: entry options ── */}
       {phase === "idle" && !typeMode && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-secondary/20 py-8 px-4">
           <p className="text-xs text-muted-foreground text-center max-w-xs">
-            Speak the prescription naturally — problem, medicine name, dosage, and any lifestyle advice.<br />
+            Speak the prescription naturally — problem, medicine name, dosage, and lifestyle advice.<br />
             <span className="text-foreground/50 not-italic">
               e.g. "Melasma — Hydroquinone 4% cream, thin layer every night. SPF 50 daily."
             </span>
@@ -2085,6 +2158,43 @@ function AddPrescriptionForm({
             >
               <Pencil className="h-3.5 w-3.5" /> Type prescription
             </button>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-2 bg-background hover:bg-secondary transition-colors cursor-pointer">
+              <Upload className="h-3.5 w-3.5" /> Upload image
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  e.target.value = "";
+                  setRxError(null);
+                  setPhase("parsing");
+                  try {
+                    const fd = new FormData();
+                    fd.append("image", file, file.name);
+                    const res = await fetch(`/api/patients/${patient.id}/prescriptions/image`, { method: "POST", body: fd });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setSavedRx(data.prescription);
+                      setPhase("saved");
+                    } else {
+                      // Fallback: show image preview in type mode
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setClinicalRec(`[Image uploaded: ${file.name}]`);
+                        setTypeMode(true);
+                        setPhase("idle");
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  } catch {
+                    setRxError("Image upload failed — try again or type the prescription.");
+                    setPhase("idle");
+                  }
+                }}
+              />
+            </label>
           </div>
         </div>
       )}

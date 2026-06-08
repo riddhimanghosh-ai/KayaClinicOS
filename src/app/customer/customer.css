@@ -89,8 +89,6 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  overflow: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -106,7 +104,7 @@ body {
 /* ─── Artboard surface ─── */
 .frame {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -115,7 +113,6 @@ body {
   line-height: 1.5;
   letter-spacing: -0.005em;
   position: relative;
-  overflow: hidden;
 }
 .frame * { box-sizing: border-box; }
 .frame.dark {
@@ -390,6 +387,10 @@ body {
   gap: var(--pad-3);
   background: var(--paper-2);
   border-right: 1px solid var(--rule);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 .nav-rail .brand {
   font-family: var(--sans);
@@ -629,18 +630,18 @@ body {
 }
 
 /* ─── Responsive layout helpers ─── */
-.desktop-only { display: none; height: 100%; }
-.mobile-only  { display: block; height: 100vh; }
+.desktop-only { display: none; min-height: 100vh; }
+.mobile-only  { display: block; height: 100vh; overflow: hidden; }
 @media (min-width: 1024px) {
-  .desktop-only { display: block !important; height: 100%; }
+  .desktop-only { display: block !important; min-height: 100vh; }
   .mobile-only  { display: none !important; }
 }
 
 /* Force-override via toggle button */
-html.force-desktop .desktop-only { display: block !important; height: 100%; }
+html.force-desktop .desktop-only { display: block !important; min-height: 100vh; }
 html.force-desktop .mobile-only  { display: none !important; }
 html.force-mobile  .desktop-only { display: none !important; }
-html.force-mobile  .mobile-only  { display: block !important; height: 100vh; }
+html.force-mobile  .mobile-only  { display: block !important; height: 100vh; overflow: hidden; }
 
 /* View toggle button — always visible */
 .view-toggle-btn { display: flex; }

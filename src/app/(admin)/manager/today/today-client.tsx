@@ -305,6 +305,9 @@ export function TodayClient({
       ) : (
         <CallQueueGrid groups={groups} onSelect={setSelectedKey} />
       )}
+
+      {/* Who to Call — all groups, full priority list */}
+      <WhoToCallAccordion groups={groups} />
     </div>
   );
 }
@@ -1073,6 +1076,121 @@ function QuickBookPanel({
         </div>
       </div>
     </>
+  );
+}
+
+/* ── Who to Call — flat sequential queue ─────────────────────────────────── */
+
+function WhoToCallAccordion({ groups }: { groups: Group[] }) {
+  const [open, setOpen] = useState(true);
+  const [calledKeys, setCalledKeys] = useState<Set<string>>(new Set());
+
+  // Flatten all groups into one ordered list: confirmation first, then the rest
+  const allEntries = groups.flatMap(g =>
+    g.entries.map(e => ({ ...e, groupKey: g.key, groupLabel: g.label, groupBadgeCls: g.badgeCls }))
+  );
+
+  const pending = allEntries.filter(e => !calledKeys.has(e.key));
+  const done    = allEntries.filter(e => calledKeys.has(e.key));
+
+  if (allEntries.length === 0) return null;
+
+  return (
+    <section>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-card hover:bg-secondary/20 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm font-semibold">Who to Call</span>
+          {pending.length > 0 && (
+            <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold">
+              {pending.length} remaining
+            </span>
+          )}
+          {done.length > 0 && (
+            <span className="rounded-full bg-success/10 text-success px-2 py-0.5 text-[10px] font-semibold">
+              {done.length} done
+            </span>
+          )}
+        </div>
+        <span className="text-muted-foreground text-xs">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-xl border border-border overflow-hidden">
+
+          {pending.length === 0 && (
+            <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground justify-center">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              All calls done for now.
+            </div>
+          )}
+
+          {pending.map((entry, i) => (
+            <div
+              key={entry.key}
+              className="flex items-center gap-3 px-4 py-3 border-b border-border/50 last:border-b-0 hover:bg-secondary/20 transition-colors"
+            >
+              {/* Step number */}
+              <div className={[
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                i === 0 ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground border border-border",
+              ].join(" ")}>
+                {i + 1}
+              </div>
+
+              {/* Name + reason */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm">{entry.name}</span>
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${entry.groupBadgeCls}`}>
+                    {entry.groupLabel}
+                  </span>
+                  {entry.meta && (
+                    <span className="font-mono text-[10px] text-muted-foreground">{entry.meta}</span>
+                  )}
+                </div>
+                {/* First context line only — enough to know why you're calling */}
+                {entry.context[0] && (
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{entry.context[0]}</div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={`tel:${entry.phone}`}
+                  onClick={() => setCalledKeys(prev => new Set([...prev, entry.key]))}
+                  className="flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:bg-primary/90 transition-colors whitespace-nowrap"
+                >
+                  <Phone className="h-3 w-3" />
+                  <span className="hidden sm:inline">{entry.phone}</span>
+                  <span className="sm:hidden">Call</span>
+                </a>
+                {entry.action.type === "confirm" ? (
+                  <ConfirmButton appointmentId={entry.action.appointmentId} />
+                ) : (
+                  <button
+                    onClick={() => setCalledKeys(prev => new Set([...prev, entry.key]))}
+                    className={[
+                      "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap",
+                      ["missed","gap","call_queue","alpha","beta"].includes(entry.groupKey)
+                        ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                        : "border-border bg-card text-foreground hover:bg-secondary",
+                    ].join(" ")}
+                  >
+                    {["missed","gap","call_queue","alpha","beta"].includes(entry.groupKey) ? "Book →" : "Done ✓"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+        </div>
+      )}
+    </section>
   );
 }
 

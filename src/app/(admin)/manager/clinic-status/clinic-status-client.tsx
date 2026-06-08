@@ -1,277 +1,625 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Activity, Check, X, Plus, Trash2, Loader2, Stethoscope, Tag, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Plus,
+  CalendarDays,
+  Stethoscope,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
-import type { ClinicStatus, ClinicAppliance, ClinicOffer } from "@/lib/types";
+import type { ClinicStatus, ClinicAppliance } from "@/lib/types";
 
 type DoctorLite = { id: number; name: string; specialty: string; branch_id: number; branch_name: string };
 
-function Toggle({
-  value,
-  onChange,
-  onLabel,
-  offLabel,
-  good = "on",
+type DoctorBlock = {
+  id: string;
+  doctorId: number;
+  date: string;       // YYYY-MM-DD
+  startTime: string;  // HH:MM
+  endTime: string;    // HH:MM
+  reason: string;
+};
+
+type ApplianceBlock = {
+  id: string;
+  applianceId: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  reason: string;
+};
+
+// ---- helpers ----------------------------------------------------------------
+
+function toYMD(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+function isoToLocal(ymd: string): Date {
+  const [y, m, day] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, day);
+}
+
+/** All calendar days for a month grid (fills to full 6-week grid) */
+function calendarDays(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const days: Date[] = [];
+  // pad before
+  for (let i = first.getDay(); i > 0; i--) days.push(addDays(first, -i));
+  // month days
+  for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d));
+  // pad after to complete last week
+  while (days.length % 7 !== 0) days.push(addDays(last, days.length - (last.getDate() + first.getDay())));
+  return days;
+}
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+const DAYS_SHORT = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+// ---- mini calendar ----------------------------------------------------------
+
+function MiniCalendar({
+  year,
+  month,
+  onNav,
+  dayContent,
 }: {
-  value: boolean;
-  onChange: (v: boolean) => void;
-  onLabel: string;
-  offLabel: string;
-  good?: "on" | "off";
+  year: number;
+  month: number;
+  onNav: (delta: -1 | 1) => void;
+  dayContent: (d: Date) => React.ReactNode;
 }) {
-  const onIsGood = good === "on";
+  const days = calendarDays(year, month);
+  const today = toYMD(new Date());
+
   return (
-    <div className="inline-flex rounded-md border border-border overflow-hidden text-xs font-medium">
-      <button
-        type="button"
-        onClick={() => onChange(true)}
-        className={`px-3 py-1.5 transition-colors ${
-          value
-            ? onIsGood ? "bg-emerald-600 text-white" : "bg-destructive text-white"
-            : "bg-background text-muted-foreground hover:bg-secondary"
-        }`}
-      >
-        {onLabel}
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(false)}
-        className={`px-3 py-1.5 transition-colors ${
-          !value
-            ? onIsGood ? "bg-destructive text-white" : "bg-emerald-600 text-white"
-            : "bg-background text-muted-foreground hover:bg-secondary"
-        }`}
-      >
-        {offLabel}
-      </button>
+    <div>
+      {/* header */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => onNav(-1)}
+          className="p-1 hover:bg-secondary rounded"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="text-sm font-semibold">
+          {MONTHS[month]} {year}
+        </span>
+        <button
+          type="button"
+          onClick={() => onNav(1)}
+          className="p-1 hover:bg-secondary rounded"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      {/* day-of-week labels */}
+      <div className="grid grid-cols-7 mb-1">
+        {DAYS_SHORT.map((d) => (
+          <div key={d} className="text-center text-[10px] font-mono uppercase text-muted-foreground py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+      {/* day cells */}
+      <div className="grid grid-cols-7 gap-px">
+        {days.map((d, i) => {
+          const ymd = toYMD(d);
+          const inMonth = d.getMonth() === month;
+          const isToday = ymd === today;
+          return (
+            <div
+              key={i}
+              className={`min-h-[56px] border border-border p-1 text-xs ${
+                inMonth ? "bg-card" : "bg-secondary/40"
+              } ${isToday ? "ring-1 ring-primary ring-inset" : ""}`}
+            >
+              <div
+                className={`text-[10px] font-mono mb-0.5 ${
+                  inMonth ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {d.getDate()}
+              </div>
+              {inMonth && dayContent(d)}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
+// ---- Section A: Doctor Availability -----------------------------------------
+
+function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
+  const [selectedDoctorId, setSelectedDoctorId] = useState<number>(
+    doctors[0]?.id ?? 0
+  );
+  const [blocks, setBlocks] = useState<DoctorBlock[]>([]);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+
+  // form state
+  const [formDate, setFormDate] = useState("");
+  const [formStart, setFormStart] = useState("09:00");
+  const [formEnd, setFormEnd] = useState("17:00");
+  const [formReason, setFormReason] = useState("");
+
+  function navMonth(delta: -1 | 1) {
+    setCalMonth((m) => {
+      const nm = m + delta;
+      if (nm < 0) { setCalYear((y) => y - 1); return 11; }
+      if (nm > 11) { setCalYear((y) => y + 1); return 0; }
+      return nm;
+    });
+  }
+
+  function addBlock() {
+    if (!formDate || !formStart || !formEnd || !selectedDoctorId) return;
+    setBlocks((prev) => [
+      ...prev,
+      { id: uid(), doctorId: selectedDoctorId, date: formDate, startTime: formStart, endTime: formEnd, reason: formReason },
+    ]);
+    setFormDate("");
+    setFormReason("");
+  }
+
+  function removeBlock(id: string) {
+    setBlocks((prev) => prev.filter((b) => b.id !== id));
+  }
+
+  const DOC_COLORS = [
+    "bg-red-100 text-red-700 border-red-200",
+    "bg-blue-100 text-blue-700 border-blue-200",
+    "bg-violet-100 text-violet-700 border-violet-200",
+    "bg-emerald-100 text-emerald-700 border-emerald-200",
+    "bg-amber-100 text-amber-700 border-amber-200",
+    "bg-rose-100 text-rose-700 border-rose-200",
+  ];
+
+  // next 30 days upcoming — ALL doctors
+  const today = new Date();
+  const in30 = addDays(today, 30);
+  const upcoming = blocks
+    .filter((b) => { const d = isoToLocal(b.date); return d >= today && d <= in30; })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Combined calendar: show ALL doctors' blocks
+  function dayContent(d: Date) {
+    const ymd = toYMD(d);
+    const dayBlocks = blocks.filter((b) => b.date === ymd);
+    if (!dayBlocks.length) return null;
+    return (
+      <div className="flex flex-col gap-0.5">
+        {dayBlocks.map((b) => {
+          const docIdx = doctors.findIndex(doc => doc.id === b.doctorId);
+          const cls = DOC_COLORS[docIdx % DOC_COLORS.length] ?? DOC_COLORS[0];
+          const lastName = doctors.find(doc => doc.id === b.doctorId)?.name.split(" ").pop() ?? "Dr";
+          return (
+            <span key={b.id} className={`block truncate rounded px-1 py-px text-[9px] border ${cls}`}
+              title={`${lastName} · ${b.startTime}–${b.endTime}${b.reason ? ` · ${b.reason}` : ""}`}>
+              {lastName} {b.startTime}–{b.endTime}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Stethoscope className="h-4 w-4 text-primary" />
+          Doctor Availability Calendar
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Doctor selector */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide font-mono">
+            Select Doctor
+          </label>
+          <select
+            value={selectedDoctorId}
+            onChange={(e) => setSelectedDoctorId(Number(e.target.value))}
+            className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {doctors.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name} · {d.specialty} ({d.branch_name})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Calendar */}
+        <MiniCalendar
+          year={calYear}
+          month={calMonth}
+          onNav={navMonth}
+          dayContent={dayContent}
+        />
+
+        {/* Add block form */}
+        <div className="border border-border rounded p-3 space-y-3 bg-secondary/30">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono">
+            Add Unavailability Block
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase">Date</label>
+              <Input
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                className="mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase">Start Time</label>
+              <Input
+                type="time"
+                value={formStart}
+                onChange={(e) => setFormStart(e.target.value)}
+                className="mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase">End Time</label>
+              <Input
+                type="time"
+                value={formEnd}
+                onChange={(e) => setFormEnd(e.target.value)}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-mono text-muted-foreground uppercase">Reason (optional)</label>
+            <Input
+              placeholder="e.g. Out of clinic, Conference, Leave"
+              value={formReason}
+              onChange={(e) => setFormReason(e.target.value)}
+              className="mt-0.5"
+            />
+          </div>
+          <Button size="sm" onClick={addBlock} disabled={!formDate || !formStart || !formEnd}>
+            <Plus className="h-4 w-4" /> Add Block
+          </Button>
+        </div>
+
+        {/* Legend */}
+        {doctors.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {doctors.map((doc, i) => (
+              <span key={doc.id} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium border ${DOC_COLORS[i % DOC_COLORS.length]}`}>
+                {doc.name}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Upcoming blocks — all doctors */}
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono mb-2">
+            All upcoming blocks (next 30 days)
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No blocks scheduled.</p>
+          ) : (
+            <ul className="space-y-2">
+              {upcoming.map((b) => {
+                const docName = doctors.find(doc => doc.id === b.doctorId)?.name ?? "Doctor";
+                const docIdx = doctors.findIndex(doc => doc.id === b.doctorId);
+                const cls = DOC_COLORS[docIdx % DOC_COLORS.length] ?? DOC_COLORS[0];
+                return (
+                  <li key={b.id} className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2 bg-card">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border shrink-0 ${cls}`}>{b.date}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{docName}</span>
+                      <span className="text-xs text-muted-foreground">{b.startTime}–{b.endTime}</span>
+                      {b.reason && <span className="truncate text-xs text-muted-foreground">· {b.reason}</span>}
+                    </div>
+                    <button type="button" onClick={() => removeBlock(b.id)}
+                      className="text-muted-foreground hover:text-destructive p-1 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Section B: Appliances & Facilities -------------------------------------
+
+// Build a stable list of appliances from all branch statuses
+function collectAppliances(statuses: ClinicStatus[]): Array<{ id: string; name: string }> {
+  const seen = new Set<string>();
+  const result: Array<{ id: string; name: string }> = [];
+  for (const s of statuses) {
+    for (const a of s.appliances) {
+      if (a.name && !seen.has(a.name.toLowerCase())) {
+        seen.add(a.name.toLowerCase());
+        result.push({ id: a.name.toLowerCase().replace(/\s+/g, "-"), name: a.name });
+      }
+    }
+  }
+  // default fallbacks if no appliances in DB
+  if (!result.length) {
+    for (const n of ["Laser Machine", "IPL Device", "Hydrafacial Unit", "Consultation Room A"]) {
+      result.push({ id: n.toLowerCase().replace(/\s+/g, "-"), name: n });
+    }
+  }
+  return result;
+}
+
+function ApplianceSection({ statuses }: { statuses: ClinicStatus[] }) {
+  const appliances = collectAppliances(statuses);
+
+  const [selectedApplianceId, setSelectedApplianceId] = useState<string>(
+    appliances[0]?.id ?? ""
+  );
+  const [blocks, setBlocks] = useState<ApplianceBlock[]>([]);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+
+  const [formStart, setFormStart] = useState("");
+  const [formEnd, setFormEnd] = useState("");
+  const [formReason, setFormReason] = useState("");
+
+  function navMonth(delta: -1 | 1) {
+    setCalMonth((m) => {
+      const nm = m + delta;
+      if (nm < 0) { setCalYear((y) => y - 1); return 11; }
+      if (nm > 11) { setCalYear((y) => y + 1); return 0; }
+      return nm;
+    });
+  }
+
+  function addBlock() {
+    if (!formStart || !formEnd || !selectedApplianceId) return;
+    if (formEnd < formStart) return;
+    setBlocks((prev) => [
+      ...prev,
+      { id: uid(), applianceId: selectedApplianceId, startDate: formStart, endDate: formEnd, reason: formReason },
+    ]);
+    setFormStart("");
+    setFormEnd("");
+    setFormReason("");
+  }
+
+  function removeBlock(id: string) {
+    setBlocks((prev) => prev.filter((b) => b.id !== id));
+  }
+
+  const APP_COLORS = [
+    "bg-amber-100 text-amber-700 border-amber-200",
+    "bg-red-100 text-red-700 border-red-200",
+    "bg-blue-100 text-blue-700 border-blue-200",
+    "bg-violet-100 text-violet-700 border-violet-200",
+    "bg-teal-100 text-teal-700 border-teal-200",
+    "bg-orange-100 text-orange-700 border-orange-200",
+  ];
+
+  const today = new Date();
+  const in30 = addDays(today, 30);
+  // Upcoming — ALL appliances
+  const upcoming = blocks
+    .filter((b) => isoToLocal(b.endDate) >= today && isoToLocal(b.startDate) <= in30)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  // Combined calendar: show ALL appliance blocks per day
+  function dayContent(d: Date) {
+    const ymd = toYMD(d);
+    const dayBlocks = blocks.filter((b) => b.startDate <= ymd && b.endDate >= ymd);
+    if (!dayBlocks.length) return null;
+    return (
+      <div className="flex flex-col gap-0.5">
+        {dayBlocks.map((b) => {
+          const appIdx = appliances.findIndex(a => a.id === b.applianceId);
+          const cls = APP_COLORS[appIdx % APP_COLORS.length] ?? APP_COLORS[0];
+          const shortName = appliances.find(a => a.id === b.applianceId)?.name.split(" ")[0] ?? "Unit";
+          return (
+            <span key={b.id} className={`block truncate rounded px-1 py-px text-[9px] border ${cls}`}
+              title={`${shortName}${b.reason ? ` · ${b.reason}` : " · Blocked"}`}>
+              {shortName}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CalendarDays className="h-4 w-4 text-amber-500" />
+          Appliances &amp; Facilities Calendar
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Appliance selector */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide font-mono">
+            Select Appliance / Facility
+          </label>
+          <select
+            value={selectedApplianceId}
+            onChange={(e) => setSelectedApplianceId(e.target.value)}
+            className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            {appliances.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Calendar */}
+        <MiniCalendar
+          year={calYear}
+          month={calMonth}
+          onNav={navMonth}
+          dayContent={dayContent}
+        />
+
+        {/* Add block form */}
+        <div className="border border-border rounded p-3 space-y-3 bg-secondary/30">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono">
+            Block a Date Range
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase">Start Date</label>
+              <Input
+                type="date"
+                value={formStart}
+                onChange={(e) => setFormStart(e.target.value)}
+                className="mt-0.5"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase">End Date</label>
+              <Input
+                type="date"
+                value={formEnd}
+                onChange={(e) => setFormEnd(e.target.value)}
+                className="mt-0.5"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-mono text-muted-foreground uppercase">Reason</label>
+            <Input
+              placeholder="e.g. Maintenance, Repair, Out of service"
+              value={formReason}
+              onChange={(e) => setFormReason(e.target.value)}
+              className="mt-0.5"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={addBlock}
+            disabled={!formStart || !formEnd || formEnd < formStart}
+            className="bg-amber-500 hover:bg-amber-600 text-white"
+          >
+            <Plus className="h-4 w-4" /> Add Block
+          </Button>
+        </div>
+
+        {/* Upcoming blocks */}
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono mb-2">
+            Upcoming blocks (next 30 days)
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No blocks scheduled.</p>
+          ) : (
+            <ul className="space-y-2">
+              {upcoming.map((b) => {
+                const appIdx = appliances.findIndex(a => a.id === b.applianceId);
+                const cls = APP_COLORS[appIdx % APP_COLORS.length] ?? APP_COLORS[0];
+                const appName = appliances.find(a => a.id === b.applianceId)?.name ?? b.applianceId;
+                return (
+                  <li key={b.id} className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2 bg-card">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border shrink-0 ${cls}`}>
+                        {b.startDate === b.endDate ? b.startDate : `${b.startDate} → ${b.endDate}`}
+                      </span>
+                      <span className="text-sm font-medium text-foreground truncate">{appName}</span>
+                      {b.reason && <span className="truncate text-xs text-muted-foreground">· {b.reason}</span>}
+                    </div>
+                    <button type="button" onClick={() => removeBlock(b.id)}
+                      className="text-muted-foreground hover:text-destructive p-1 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Legend */}
+        {appliances.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {appliances.map((a, i) => (
+              <span key={a.id} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium border ${APP_COLORS[i % APP_COLORS.length]}`}>
+                {a.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---- Root export ------------------------------------------------------------
+
 export function ClinicStatusClient({
-  statuses: initial,
+  statuses,
   doctors,
 }: {
   statuses: ClinicStatus[];
   doctors: DoctorLite[];
 }) {
-  const [statuses, setStatuses] = useState<ClinicStatus[]>(initial);
-  const [selectedId, setSelectedId] = useState<number>(initial[0]?.branch_id ?? 0);
-  const [saving, startSave] = useTransition();
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  const idx = statuses.findIndex((s) => s.branch_id === selectedId);
-  const s = statuses[idx];
-  if (!s) return <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No branches found.</CardContent></Card>;
-
-  const patch = (partial: Partial<ClinicStatus>) =>
-    setStatuses((prev) => prev.map((x, i) => (i === idx ? { ...x, ...partial } : x)));
-
-  const patchAppliance = (i: number, partial: Partial<ClinicAppliance>) =>
-    patch({ appliances: s.appliances.map((a, j) => (j === i ? { ...a, ...partial } : a)) });
-  const addAppliance = () => patch({ appliances: [...s.appliances, { name: "", working: true, note: "" }] });
-  const removeAppliance = (i: number) => patch({ appliances: s.appliances.filter((_, j) => j !== i) });
-
-  const patchOffer = (i: number, partial: Partial<ClinicOffer>) =>
-    patch({ offers: s.offers.map((o, j) => (j === i ? { ...o, ...partial } : o)) });
-  const addOffer = () => patch({ offers: [...s.offers, { title: "", detail: "", discount_pct: null, valid_till: null, active: true }] });
-  const removeOffer = (i: number) => patch({ offers: s.offers.filter((_, j) => j !== i) });
-
-  const save = () => {
-    startSave(async () => {
-      const res = await fetch("/api/manager/clinic-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          branch_id: s.branch_id,
-          is_open: !!s.is_open,
-          status_note: s.status_note,
-          on_duty_doctor_id: s.on_duty_doctor_id,
-          doctor_on_leave: !!s.doctor_on_leave,
-          doctor_leave_note: s.doctor_leave_note,
-          appliances: s.appliances.filter((a) => a.name.trim()),
-          offers: s.offers.filter((o) => o.title.trim()),
-        }),
-      });
-      const data = await res.json();
-      if (data.status) {
-        setStatuses((prev) => prev.map((x, i) => (i === idx ? data.status : x)));
-        setSavedAt(Date.now());
-      }
-    });
-  };
-
-  const appliancesDown = s.appliances.filter((a) => !a.working).length;
-  const activeOffers = s.offers.filter((o) => o.active).length;
+  const [activeTab, setActiveTab] = useState<"doctors" | "appliances">("doctors");
 
   return (
-    <div className="space-y-6">
-      {/* Branch selector */}
-      <div className="flex flex-wrap gap-2">
-        {statuses.map((b) => {
-          const issue = !b.is_open || b.doctor_on_leave || b.appliances.some((a) => !a.working);
-          return (
-            <button
-              key={b.branch_id}
-              onClick={() => setSelectedId(b.branch_id)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                b.branch_id === selectedId
-                  ? "border-blue-600 bg-blue-50 text-blue-700 font-medium"
-                  : "border-border hover:bg-secondary"
-              }`}
-            >
-              <span className={`h-2 w-2 rounded-full ${b.is_open ? (issue ? "bg-amber-500" : "bg-emerald-500") : "bg-destructive"}`} />
-              {b.branch_name}
-            </button>
-          );
-        })}
+    <div className="space-y-0">
+      {/* Tab bar */}
+      <div className="flex border-b border-border mb-6">
+        {([
+          { key: "doctors",    label: "Doctor Availability Calendar",       icon: <Stethoscope className="h-4 w-4" /> },
+          { key: "appliances", label: "Appliances & Facilities Calendar",   icon: <CalendarDays className="h-4 w-4" /> },
+        ] as const).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={[
+              "flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors",
+              activeTab === t.key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {t.icon}{t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Snapshot */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <SnapStat label="Clinic" value={s.is_open ? "Open" : "Closed"} tone={s.is_open ? "good" : "bad"} />
-        <SnapStat label="Doctor" value={s.doctor_on_leave ? "On leave" : (s.on_duty_doctor_name ?? "Not set")} tone={s.doctor_on_leave || !s.on_duty_doctor_name ? "bad" : "good"} />
-        <SnapStat label="Appliances down" value={String(appliancesDown)} tone={appliancesDown ? "bad" : "good"} />
-        <SnapStat label="Active offers" value={String(activeOffers)} tone="neutral" />
-      </div>
-
-      {/* Clinic open + doctor */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4 text-blue-600" /> {s.branch_name} · {s.city}</CardTitle>
-          <CardDescription>Manager: {s.manager_name ?? "—"}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium">Clinic open today?</div>
-              <div className="text-xs text-muted-foreground">Call center won&apos;t book if marked closed.</div>
-            </div>
-            <Toggle value={!!s.is_open} onChange={(v) => patch({ is_open: v ? 1 : 0 })} onLabel="Open" offLabel="Closed" good="on" />
-          </div>
-          <Input
-            placeholder="Status note (e.g. open till 6 PM today, closed Sunday for maintenance)"
-            value={s.status_note ?? ""}
-            onChange={(e) => patch({ status_note: e.target.value })}
-          />
-
-          <div className="border-t border-border pt-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm font-medium"><Stethoscope className="h-4 w-4 text-emerald-600" /> Doctor on duty</div>
-              <Toggle value={!s.doctor_on_leave} onChange={(v) => patch({ doctor_on_leave: v ? 0 : 1 })} onLabel="Available" offLabel="On leave" good="on" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                value={s.on_duty_doctor_id ?? ""}
-                onChange={(e) => patch({ on_duty_doctor_id: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="">— Select doctor —</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} · {d.specialty}{d.branch_id !== s.branch_id ? ` (${d.branch_name})` : ""}
-                  </option>
-                ))}
-              </Select>
-              {!!s.doctor_on_leave && (
-                <Input
-                  placeholder="Leave note (e.g. back Mon 14 Jul)"
-                  value={s.doctor_leave_note ?? ""}
-                  onChange={(e) => patch({ doctor_leave_note: e.target.value })}
-                />
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Appliances */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Appliances &amp; facilities</CardTitle>
-          <CardDescription>Mark any machine that is down so the call center doesn&apos;t promise that treatment.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {s.appliances.map((a, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2">
-              <Input
-                className="flex-1 min-w-[160px]"
-                placeholder="Appliance name"
-                value={a.name}
-                onChange={(e) => patchAppliance(i, { name: e.target.value })}
-              />
-              <Toggle value={a.working} onChange={(v) => patchAppliance(i, { working: v })} onLabel="Working" offLabel="Down" good="on" />
-              <Input
-                className="flex-1 min-w-[140px]"
-                placeholder={a.working ? "Note (optional)" : "What's wrong / ETA?"}
-                value={a.note ?? ""}
-                onChange={(e) => patchAppliance(i, { note: e.target.value })}
-              />
-              <button onClick={() => removeAppliance(i)} className="text-muted-foreground hover:text-destructive p-1" title="Remove">
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-          <Button variant="secondary" size="sm" onClick={addAppliance}><Plus className="h-4 w-4" /> Add appliance</Button>
-        </CardContent>
-      </Card>
-
-      {/* Offers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Tag className="h-4 w-4 text-rose-500" /> Active offers</CardTitle>
-          <CardDescription>What promotions the call center can quote right now.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {s.offers.length === 0 && (
-            <div className="text-sm text-muted-foreground">No offers published.</div>
-          )}
-          {s.offers.map((o, i) => (
-            <div key={i} className="rounded-md border border-border p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Input className="flex-1" placeholder="Offer title (e.g. Free consultation this week)" value={o.title} onChange={(e) => patchOffer(i, { title: e.target.value })} />
-                <Toggle value={o.active} onChange={(v) => patchOffer(i, { active: v })} onLabel="Active" offLabel="Paused" good="on" />
-                <button onClick={() => removeOffer(i)} className="text-muted-foreground hover:text-destructive p-1" title="Remove">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <Input placeholder="Detail (e.g. 20% off above ₹5,999)" value={o.detail ?? ""} onChange={(e) => patchOffer(i, { detail: e.target.value })} />
-              <div className="grid grid-cols-2 gap-2">
-                <Input type="number" placeholder="Discount %" value={o.discount_pct ?? ""} onChange={(e) => patchOffer(i, { discount_pct: e.target.value === "" ? null : Number(e.target.value) })} />
-                <Input type="date" placeholder="Valid till" value={o.valid_till ?? ""} onChange={(e) => patchOffer(i, { valid_till: e.target.value || null })} />
-              </div>
-            </div>
-          ))}
-          <Button variant="secondary" size="sm" onClick={addOffer}><Plus className="h-4 w-4" /> Add offer</Button>
-        </CardContent>
-      </Card>
-
-      {/* Save */}
-      <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          Publish status
-        </Button>
-        {savedAt && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3 w-3" /> Published — call center updated</span>}
-        {s.updated_at && !savedAt && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> Last updated {s.updated_at}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SnapStat({ label, value, tone }: { label: string; value: string; tone: "good" | "bad" | "neutral" }) {
-  const color = tone === "good" ? "text-emerald-600" : tone === "bad" ? "text-destructive" : "text-foreground";
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`mt-0.5 text-lg font-semibold ${color}`}>{value}</div>
+      {activeTab === "doctors"    && <DoctorSection doctors={doctors} />}
+      {activeTab === "appliances" && <ApplianceSection statuses={statuses} />}
     </div>
   );
 }

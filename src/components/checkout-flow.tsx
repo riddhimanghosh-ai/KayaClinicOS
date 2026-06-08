@@ -83,6 +83,7 @@ export function CheckoutFlow({
   serviceType,
   onClose,
   onStartTreatment,
+  productsOnly = false,
 }: {
   appointmentId: number;
   patientId: number;
@@ -90,6 +91,7 @@ export function CheckoutFlow({
   serviceType: string;
   onClose: () => void;
   onStartTreatment?: () => void;
+  productsOnly?: boolean;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<CheckoutPhase>("items");
@@ -147,10 +149,12 @@ export function CheckoutFlow({
         };
       });
 
-      setLineItems(items);
-      setSelected(items.map(() => true));
-      setDiscountOpen(items.map(() => false));
-      setEditingPrice(items.map(() => false));
+      // In productsOnly mode (Rx tab), strip in-clinic procedures — patient is buying take-home products
+      const filtered = productsOnly ? items.filter(it => !it.isTreatment) : items;
+      setLineItems(filtered);
+      setSelected(filtered.map(() => true));
+      setDiscountOpen(filtered.map(() => false));
+      setEditingPrice(filtered.map(() => false));
     } catch (e) {
       console.error(e);
       const fallback: LineItem[] = [{
@@ -197,7 +201,7 @@ export function CheckoutFlow({
   };
 
   const handleCollect = () => {
-    if (hasSelectedTreatment) {
+    if (!productsOnly && hasSelectedTreatment) {
       setPhase("treatment_otp");
     } else {
       const items: ReceiptItem[] = selectedProducts.map(it => ({ name: it.product, cost: lineTotal(it) }));

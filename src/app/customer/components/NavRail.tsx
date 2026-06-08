@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 const Icon = ({ size = 18, children, stroke = 1.4, style }: any) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -29,9 +28,6 @@ const NAV_ITEMS = [
     items: [
       { id: 'dashboard',    href: '/customer/dashboard',                        label: 'Overview',          icon: IconHome,     badge: null },
       { id: 'appointments', href: '/customer/sessions',                         label: 'History',           icon: IconAppt,     badge: '2' },
-      { id: 'medications',  href: '/customer/prescriptions?tab=medications',    label: 'Medications',       icon: IconMed,      badge: '4' },
-      { id: 'prescriptions',href: '/customer/prescriptions?tab=prescriptions',  label: 'Prescriptions',     icon: IconRx,       badge: null },
-      { id: 'before-after', href: '/customer/before-after',                     label: 'Progress',          icon: IconProgress, badge: null },
     ],
   },
   {
@@ -51,8 +47,6 @@ const NAV_ITEMS = [
 ];
 
 export default function NavRail({ active = 'dashboard' }: { active?: string }) {
-  const router = useRouter();
-
   return (
     <div className="nav-rail">
       <div>
@@ -103,27 +97,6 @@ export default function NavRail({ active = 'dashboard' }: { active?: string }) {
             <div style={{ fontSize: 13, fontWeight: 500 }}>Priya R.</div>
             <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--mute)' }}>ID · 8842·G</div>
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('user');
-              router.push('/customer/login');
-            }}
-            title="Sign out"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: 6, borderRadius: 0, color: 'var(--muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'color 0.15s, background 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-tint)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--mute)'; e.currentTarget.style.background = 'none'; }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ClipboardList, Package, CheckCircle2, AlertCircle,
   Clock, Phone, ArrowRight, Filter, CheckSquare, Loader2,
+  FileText, Camera, ShieldCheck,
 } from "lucide-react";
 import type { TreatmentOpsRow } from "@/lib/db";
 
@@ -61,63 +62,61 @@ function svcBadgeCls(st: string) {
   return "bg-secondary text-muted-foreground border-border";
 }
 
-// Statuses where the patient is physically at the clinic or has converted — manager action possible.
-const ACTIVE_STATUSES = ["arrived", "in_session", "converted", "rescheduled"];
+// Only show patients who have STARTED treatment (OTP done, session in progress or completed)
+const TREATMENT_STARTED_STATUSES = ["in_session", "in_treatment", "treatment_done", "converted"];
 
 export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");
 
-  // Only count rows where the patient has actually arrived — not "booked" / "confirmed"
-  const activeRows = rows.filter(r => ACTIVE_STATUSES.includes(r.appt_status));
+  // Only rows where treatment has actually started — excludes "arrived" / pre-session
+  const activeRows = rows.filter(r => TREATMENT_STARTED_STATUSES.includes(r.appt_status));
 
   const ongoingCount    = activeRows.filter(r => getTreatmentStatus(r) === "in_progress").length;
-  const notStartedCount = activeRows.filter(r => isPendingTreatment(r) && getTreatmentStatus(r) === "not_started").length;
   const pendingFnoCount = activeRows.filter(isPendingFno).length;
   const completeCount   = activeRows.filter(isComplete).length;
+  const notesPendingCount  = activeRows.filter(r => getTreatmentStatus(r) === "in_progress" && !r.ps_notes).length;
+  const photosMissingCount = activeRows.filter(r => getTreatmentStatus(r) === "in_progress" && r.ps_photos === 0).length;
+  const consentPendingCount = activeRows.filter(r => getTreatmentStatus(r) === "in_progress" && !r.ps_consent).length;
 
   const FILTERS: { key: FilterKey; label: string; count: number; color: string; example: string }[] = [
     {
-      key: "all", label: "Active sessions", count: activeRows.length, color: "",
-      example: "Patients who have arrived, are in session, or have converted today — actionable rows only",
+      key: "all", label: "In Treatment", count: activeRows.length, color: "",
+      example: "Patients currently in session or whose treatment has been completed today",
     },
     {
-      key: "ongoing", label: "Ongoing Treatment", count: ongoingCount, color: "text-violet-700",
-      example: "e.g. patient mid-laser session — photos taken, treatment notes in progress, not yet marked complete",
-    },
-    {
-      key: "pending_treatment", label: "Not Started", count: notStartedCount, color: "text-amber-700",
-      example: "e.g. patient has arrived or is in the chair but treatment screen hasn't been opened yet",
+      key: "ongoing", label: "Ongoing", count: ongoingCount, color: "text-violet-700",
+      example: "Treatment in progress — photos taken, notes being filled, not yet marked complete",
     },
     {
       key: "pending_fno", label: "Pending FnO Entry", count: pendingFnoCount, color: "text-amber-700",
-      example: "e.g. session is complete but materials used (gloves, gels, serums) haven't been logged in inventory yet",
+      example: "Treatment marked complete — log materials used (gloves, gels, serums) in inventory",
     },
     {
       key: "complete", label: "Complete", count: completeCount, color: "text-emerald-700",
-      example: "Treatment marked done and BOM inventory submitted — nothing left to do for these sessions",
+      example: "Treatment done and inventory submitted — nothing left to do",
     },
   ];
 
   const activeFilter = FILTERS.find(f => f.key === filter);
 
-  // Never show rows where the patient hasn't arrived yet (booked/confirmed) — nothing for manager to do.
   const visible = activeRows.filter(row => {
-    if (filter === "ongoing")           return getTreatmentStatus(row) === "in_progress";
-    if (filter === "pending_treatment") return isPendingTreatment(row) && getTreatmentStatus(row) === "not_started";
-    if (filter === "pending_fno")       return isPendingFno(row);
-    if (filter === "complete")          return isComplete(row);
+    if (filter === "ongoing")    return getTreatmentStatus(row) === "in_progress";
+    if (filter === "pending_fno") return isPendingFno(row);
+    if (filter === "complete")   return isComplete(row);
     return true;
   });
 
   return (
     <div className="space-y-4">
       {/* Summary strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: "Total sessions",    value: rows.length,          icon: ClipboardList, cls: "" },
-          { label: "Ongoing treatment", value: ongoingCount,          icon: Clock,         cls: "text-violet-600" },
-          { label: "Pending FnO entry", value: pendingFnoCount,       icon: Package,       cls: "text-amber-600" },
-          { label: "Fully complete",    value: completeCount,         icon: CheckCircle2,  cls: "text-emerald-600" },
+          { label: "Total today",       value: activeRows.length,   icon: ClipboardList,  cls: "" },
+          { label: "In treatment now",  value: ongoingCount,        icon: Clock,          cls: "text-violet-600" },
+          { label: "Notes pending",     value: notesPendingCount,   icon: FileText,       cls: "text-orange-500" },
+          { label: "Photos missing",    value: photosMissingCount,  icon: Camera,         cls: "text-blue-500" },
+          { label: "Consent pending",   value: consentPendingCount, icon: ShieldCheck,    cls: "text-red-500" },
+          { label: "Pending FnO entry", value: pendingFnoCount,     icon: Package,        cls: "text-amber-600" },
         ].map(m => (
           <div key={m.label} className="rounded-xl border border-border bg-card px-4 py-3">
             <m.icon className={`h-4 w-4 mb-2 ${m.cls || "text-muted-foreground"}`} />
@@ -204,9 +203,9 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <ClipboardList className="h-3 w-3" />Treatment
                         </div>
-                        {tStatus === "complete" ? (
+                        {tStatus === "complete" || row.appt_status === "converted" ? (
                           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
-                            <CheckCircle2 className="h-4 w-4" />Done
+                            <CheckCircle2 className="h-4 w-4" />Treatment completed
                           </div>
                         ) : tStatus === "in_progress" ? (
                           <div className="space-y-1">
@@ -221,8 +220,9 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-sm text-amber-700 font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" />Not started
+                          /* treatment_done status without a ps record — session was completed via schedule board */
+                          <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
+                            <CheckCircle2 className="h-4 w-4" />Treatment completed
                           </div>
                         )}
                       </div>
@@ -234,11 +234,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <Package className="h-3 w-3" />Inventory (FnO)
                         </div>
-                        {fStatus === "not_applicable" ? (
-                          <div className="text-xs text-muted-foreground">Session not yet done</div>
-                        ) : tStatus === "not_started" && row.appt_status !== "converted" ? (
-                          <div className="text-xs text-muted-foreground">Awaiting treatment</div>
-                        ) : fStatus === "complete" ? (
+                        {fStatus === "complete" ? (
                           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
                             <CheckCircle2 className="h-4 w-4" />Submitted
                             {row.fno_submitted_at && (
@@ -247,8 +243,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-sm text-amber-700 font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" />
-                            {tStatus === "not_started" ? "Inventory update remaining" : "Pending entry"}
+                            <AlertCircle className="h-3.5 w-3.5" />Pending entry
                           </div>
                         )}
                       </div>
@@ -259,10 +254,10 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                       {isPendingTreatment(row) && (
                         <div className="flex flex-col gap-1.5">
                           <a
-                            href={`/manager/appointments?open=${row.appointment_id}`}
+                            href={`/manager/appointments?date=${row.appointment_ts.slice(0, 10)}&open=${row.appointment_id}`}
                             className="flex items-center gap-1.5 rounded-lg bg-violet-600 text-white px-3 py-2 text-xs font-semibold hover:bg-violet-700 transition-colors whitespace-nowrap"
                           >
-                            Open Treatment <ArrowRight className="h-3.5 w-3.5" />
+                            Open in Schedule Board <ArrowRight className="h-3.5 w-3.5" />
                           </a>
                           {tStatus === "in_progress" && (
                             <CompleteButton row={row} />

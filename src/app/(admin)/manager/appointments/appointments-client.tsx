@@ -121,31 +121,46 @@ const LEAD_TYPE_STYLE: Record<string, { label: string; cls: string }> = {
 
 // ── Status styles ─────────────────────────────────────────────────────────────
 const STATUS_BG: Record<string, string> = {
-  booked:      "border-blue-300 bg-primary/5 text-blue-900",
-  confirmed:   "border-success/40 bg-success/5 text-foreground",
-  arrived:     "border-border bg-secondary text-amber-900",
-  in_session:  "border-violet-300 bg-primary/5 text-violet-900",
-  converted:   "border-green-300 bg-green-100/60 text-green-900 opacity-70",
-  rescheduled: "border-orange-300 bg-orange-50 text-orange-900 opacity-80",
-  no_show:     "border-border bg-secondary/40 text-muted-foreground opacity-40",
+  booked:            "border-blue-300 bg-primary/5 text-blue-900",
+  confirmed:         "border-success/40 bg-success/5 text-foreground",
+  arrived:           "border-border bg-secondary text-amber-900",
+  in_session:        "border-violet-300 bg-primary/5 text-violet-900",
+  in_consultation:   "border-violet-200 bg-violet-50 text-violet-900",
+  consultation_done: "border-teal-200 bg-teal-50 text-teal-900",
+  in_treatment:      "border-orange-200 bg-orange-50 text-orange-900",
+  treatment_done:    "border-emerald-200 bg-emerald-50 text-emerald-900",
+  done:              "border-success/30 bg-success/5 text-foreground",
+  converted:         "border-green-300 bg-green-100/60 text-green-900 opacity-70",
+  rescheduled:       "border-orange-300 bg-orange-50 text-orange-900 opacity-80",
+  no_show:           "border-border bg-secondary/40 text-muted-foreground opacity-40",
 };
 const STATUS_DOT: Record<string, string> = {
-  booked:      "bg-primary/60",
-  confirmed:   "bg-success/50",
-  arrived:     "bg-secondary0",
-  in_session:  "bg-primary/50",
-  converted:   "bg-success",
-  rescheduled: "bg-orange-400",
-  no_show:     "bg-gray-400",
+  booked:            "bg-primary/60",
+  confirmed:         "bg-success/50",
+  arrived:           "bg-secondary0",
+  in_session:        "bg-primary/50",
+  in_consultation:   "bg-violet-500",
+  consultation_done: "bg-teal-500",
+  in_treatment:      "bg-orange-500",
+  treatment_done:    "bg-emerald-500",
+  done:              "bg-success",
+  converted:         "bg-success",
+  rescheduled:       "bg-orange-400",
+  no_show:           "bg-gray-400",
 };
 const STATUS_LABEL: Record<string, string> = {
-  booked:      "Booked",
-  confirmed:   "Confirmed",
-  arrived:     "Arrived",
-  in_session:  "In Session",
-  converted:   "Completed ✓",
-  rescheduled: "Rescheduled",
-  no_show:     "No Show",
+  booked:            "Booked",
+  confirmed:         "Confirmed",
+  arrived:           "Arrived",
+  in_session:        "In Session",
+  in_consultation:   "In Consultation",
+  consultation_done: "Consultation Done",
+  in_treatment:      "In Treatment",
+  treatment_done:    "Treatment Done",
+  done:              "Done ✓",
+  converted:         "Completed ✓",
+  rescheduled:       "Rescheduled",
+  no_show:           "No Show",
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -222,23 +237,32 @@ export function AppointmentsClient({
   const [search, setSearch] = useState("");
 
   const FILTERS = [
-    { key: "all",              label: "All",                count: appts.length },
-    { key: "booked",           label: "Needs Confirmation", count: appts.filter(a => a.status === "booked").length },
-    { key: "confirmed",        label: "Confirmed",          count: appts.filter(a => a.status === "confirmed").length },
-    { key: "checkout_pending", label: "Checkout Pending",   count: appts.filter(a => a.status === "arrived").length, dot: STATUS_DOT["arrived"] },
-    { key: "in_session",       label: "In Session",         count: appts.filter(a => a.status === "in_session").length },
-    { key: "inventory_pending",label: "Inventory Pending",  count: appts.filter(a => a.status === "converted").length, dot: "bg-orange-400" },
-    { key: "rescheduled",      label: "Rescheduled",        count: appts.filter(a => a.status === "rescheduled").length },
-    { key: "no_show",          label: "No Show",            count: appts.filter(a => a.status === "no_show").length },
+    { key: "all",              label: "All",                  count: appts.length },
+    { key: "booked",           label: "Needs Confirmation",   count: appts.filter(a => a.status === "booked").length,            hint: "Call to confirm they're coming" },
+    { key: "confirmed",        label: "Confirmed",            count: appts.filter(a => a.status === "confirmed").length,          hint: "Waiting to arrive" },
+    { key: "checkout_pending", label: "Checkout Pending",     count: appts.filter(a => a.status === "arrived").length,            hint: "Patient here — collect payment", dot: STATUS_DOT["arrived"] },
+    { key: "in_consultation",  label: "In Consultation",      count: appts.filter(a => a.status === "in_consultation").length,    hint: "Currently with doctor" },
+    { key: "in_session",       label: "In Treatment",         count: appts.filter(a => ["in_session","in_treatment"].includes(a.status)).length, hint: "Session underway" },
+    { key: "treatment_done",   label: "Treatment Done",       count: appts.filter(a => a.status === "treatment_done").length,     hint: "Needs inventory entry", dot: "bg-emerald-500" },
+    { key: "inventory_pending",label: "Inventory Pending",    count: appts.filter(a => a.status === "converted").length,          hint: "Session done — log materials used", dot: "bg-orange-400" },
+    { key: "rescheduled",      label: "Rescheduled",          count: appts.filter(a => a.status === "rescheduled").length },
+    { key: "no_show",          label: "No Show",              count: appts.filter(a => a.status === "no_show").length },
   ].filter(f => f.key === "all" || f.count > 0);
 
-  const statusForFilter = (key: string) =>
-    key === "checkout_pending" ? "arrived" :
-    key === "inventory_pending" ? "converted" : key;
+  const statusForFilter = (key: string) => {
+    if (key === "checkout_pending") return "arrived";
+    if (key === "inventory_pending") return "converted";
+    if (key === "in_session") return "in_session"; // handled below with multi-status
+    return key;
+  };
 
   const searchLower = search.toLowerCase().trim();
   const visibleAppts = appts
-    .filter(a => statusFilter === "all" || a.status === statusForFilter(statusFilter))
+    .filter(a => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "in_session") return ["in_session","in_treatment"].includes(a.status);
+      return a.status === statusForFilter(statusFilter);
+    })
     .filter(a => !searchLower || a.patient_name.toLowerCase().includes(searchLower) ||
       a.service_type.toLowerCase().includes(searchLower) ||
       (a.doctor_name ?? "").toLowerCase().includes(searchLower) ||
@@ -303,28 +327,38 @@ export function AppointmentsClient({
       )}
 
       {/* Status filter chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setStatusFilter(f.key)}
-            className={[
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
-              statusFilter === f.key
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground",
-            ].join(" ")}
-          >
-            {f.key !== "all" && (
-              <span className={`h-1.5 w-1.5 rounded-full ${"dot" in f && f.dot ? f.dot : STATUS_DOT[f.key] ?? "bg-gray-400"}`} />
-            )}
-            {f.label}
-            <span className={[
-              "rounded-full px-1.5 py-0 text-[10px] font-bold",
-              statusFilter === f.key ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground",
-            ].join(" ")}>{f.count}</span>
-          </button>
-        ))}
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              title={"hint" in f ? f.hint : undefined}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
+                statusFilter === f.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {f.key !== "all" && (
+                <span className={`h-1.5 w-1.5 rounded-full ${"dot" in f && f.dot ? f.dot : STATUS_DOT[f.key] ?? "bg-gray-400"}`} />
+              )}
+              {f.label}
+              <span className={[
+                "rounded-full px-1.5 py-0 text-[10px] font-bold",
+                statusFilter === f.key ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground",
+              ].join(" ")}>{f.count}</span>
+            </button>
+          ))}
+        </div>
+        {/* Active filter hint */}
+        {statusFilter !== "all" && (() => {
+          const active = FILTERS.find(f => f.key === statusFilter);
+          return active && "hint" in active && active.hint ? (
+            <p className="text-[11px] text-muted-foreground pl-1 italic">{active.hint}</p>
+          ) : null;
+        })()}
       </div>
 
       {/* Resource calendar */}
@@ -767,7 +801,7 @@ const LEAD_TYPE_OPTIONS = ["website_form","chatbot","call","referral","campaign"
 const DISPOSITION_OPTIONS = ["New Consultation","Follow-up Visit","Treatment Session","Package Session","Product Purchase","Consultation + Treatment"];
 const SUB_DISP_OPTIONS = ["New Patient","Existing Patient","Re-engagement","Referral Patient","VIP / Premium"];
 
-type Tab = "booking" | "treatment" | "inventory" | "checkout";
+type Tab = "booking" | "treatment" | "inventory" | "checkout" | "prescription";
 
 // What the clinic manager needs to do at each status
 const NEXT_STEP: Record<string, { msg: string; action?: string }> = {
@@ -838,17 +872,12 @@ function DetailDrawer({
     }
   };
 
-  // Treatment OTP state
-  const [treatmentOtp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
-  const [showTreatmentOtp, setShowTreatmentOtp] = useState(false);
-  const [treatmentOtpInput, setTreatmentOtpInput] = useState("");
-  const [treatmentOtpOk, setTreatmentOtpOk] = useState(false);
-
-  // Auto-switch tab when status advances — nothing stays locked
+  // Auto-switch tab when status advances
   useEffect(() => {
-    if (appt.status === "arrived") setTab("checkout");
-    else if (appt.status === "in_session") setTab("treatment");
-    else if (appt.status === "converted") setTab("inventory");
+    if (["booked","confirmed","arrived","in_consultation","in_session"].includes(appt.status)) setTab("booking");
+    else if (appt.status === "consultation_done") setTab("prescription");
+    else if (appt.status === "in_treatment") setTab("treatment");
+    else if (["treatment_done","done","converted"].includes(appt.status)) setTab("prescription");
   }, [appt.status]);
 
   // ── Save booking fields ────────────────────────────────────────────────────
@@ -900,7 +929,7 @@ function DetailDrawer({
     setStartedAt(now);
     setSessionStarted(true);
     await savePractitioner({ started_at: now, status: "started" });
-    onStatusChange(appt.id, "in_session");
+    onStatusChange(appt.id, "in_treatment");
   };
 
   const handleCompleteSession = async () => {
@@ -924,22 +953,53 @@ function DetailDrawer({
     setSaving(false);
   };
 
-  const STATUS_PIPELINE = [
-    { key: "booked",     label: "Booked" },
-    { key: "confirmed",  label: "Confirmed" },
-    { key: "arrived",    label: "Arrived" },
-    { key: "in_session", label: "In Session" },
-    { key: "converted",  label: "Done" },
+  // 5-node clustered pipeline: nodes 2 (Consultation) and 3 (Treatment) are dynamic clusters
+  const PIPELINE_NODES = [
+    { label: "Booked",      dot: "bg-slate-400" },
+    { label: "Confirmed",   dot: "bg-blue-500" },
+    { label: "Consultation",dot: "bg-amber-500" },  // cluster: arrived → in_consultation → consultation_done
+    { label: "Treatment",   dot: "bg-orange-500" }, // cluster: in_treatment → treatment_done
+    { label: "Done",        dot: "bg-success" },
   ];
-  const pipeIdx = STATUS_PIPELINE.findIndex(s => s.key === appt.status);
-  const treatmentLocked = !["arrived","in_session","converted"].includes(appt.status);
-  const inventoryLocked = !["in_session","converted"].includes(appt.status);
+  // Map each status to its node index
+  const STATUS_TO_NODE: Record<string, number> = {
+    booked:            0,
+    confirmed:         1,
+    arrived:           2, consultation_done: 2, in_consultation: 2, in_session: 2,
+    in_treatment:      3, treatment_done: 3,
+    done:              4, converted: 4,
+  };
+  // Dynamic dot & label inside active cluster node
+  const CLUSTER_DOT: Record<string, string> = {
+    arrived:           "bg-amber-500",
+    in_consultation:   "bg-violet-500", in_session: "bg-violet-500",
+    consultation_done: "bg-teal-500",
+    in_treatment:      "bg-orange-500",
+    treatment_done:    "bg-emerald-500",
+  };
+  const CLUSTER_SUBLABEL: Record<string, string> = {
+    arrived:           "Arrived",
+    in_consultation:   "In Consult", in_session: "In Consult",
+    consultation_done: "Consult Done",
+    in_treatment:      "In Treatment",
+    treatment_done:    "Tx Done",
+  };
+  const pipeIdx = STATUS_TO_NODE[appt.status] ?? 0;
+
+  // pipeIdx: 0=booked, 1=confirmed, 2=consultation cluster, 3=treatment cluster, 4=done
+  const POST_CONSULT = ["consultation_done","in_treatment","treatment_done","done","converted"];
+  const IN_TREATMENT  = ["in_treatment","treatment_done","done","converted"];
+  // Checkout + Rx: only after consultation is marked done
+  const checkoutLocked  = !POST_CONSULT.includes(appt.status);
+  const rxLocked        = !POST_CONSULT.includes(appt.status);
+  // Treatment: only after OTP submitted (in_treatment or later)
+  const treatmentLocked = !IN_TREATMENT.includes(appt.status);
+  const inventoryLocked = pipeIdx < 3; // unlocks from treatment cluster
+  const checkoutDone    = pipeIdx >= 2 && !["arrived","in_consultation","in_session"].includes(appt.status);
+  const treatmentDone   = pipeIdx >= 4 || appt.status === "treatment_done";
 
   const nextStep = NEXT_STEP[appt.status];
-  const treatmentDone = appt.status === "converted";
   const inventoryDone = fnoSubmitted;
-  const checkoutLocked = !["arrived", "in_session"].includes(appt.status);
-  const checkoutDone = appt.status === "converted";
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
@@ -992,43 +1052,45 @@ function DetailDrawer({
         </div>
 
         {/* ── Visual status pipeline ── */}
-        <div className="px-5 py-4 border-b border-border bg-secondary/10 shrink-0 space-y-3">
-          {/* Step indicators */}
+        <div className="px-5 py-3 border-b border-border bg-secondary/10 shrink-0 space-y-3">
+          {/* 5-node clustered stepper */}
           <div className="flex items-center">
-            {STATUS_PIPELINE.map((s, i) => {
-              const done = i < pipeIdx;
-              const active = s.key === appt.status;
+            {PIPELINE_NODES.map((node, i) => {
+              const isDone   = pipeIdx > i;
+              const isActive = pipeIdx === i;
+              // Active cluster node: override dot color and label from current sub-state
+              const activeDot   = isActive && CLUSTER_DOT[appt.status]      ? CLUSTER_DOT[appt.status]      : node.dot;
+              const activeLabel = isActive && CLUSTER_SUBLABEL[appt.status]  ? CLUSTER_SUBLABEL[appt.status] : node.label;
               return (
-                <div key={s.key} className="flex items-center flex-1 min-w-0">
+                <div key={i} className="flex items-center flex-1 min-w-0">
                   <div className="flex flex-col items-center flex-1 min-w-0">
                     <div className={[
-                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-                      done   ? "bg-success/50 text-white"          : "",
-                      active ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" : "",
-                      !done && !active ? "bg-secondary text-muted-foreground border border-border" : "",
+                      "flex h-6 w-6 items-center justify-center rounded-full text-white text-[9px] font-bold transition-all shrink-0",
+                      isDone   ? "bg-success/70" : "",
+                      isActive ? `${activeDot} ring-2 ring-offset-2 ring-current shadow-sm` : "",
+                      !isDone && !isActive ? "bg-muted border border-border" : "",
                     ].join(" ")}>
-                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+                      {isDone ? "✓" : ""}
                     </div>
                     <div className={[
-                      "text-[9px] mt-1 font-medium text-center leading-tight",
-                      active ? "text-primary" : done ? "text-success" : "text-muted-foreground",
-                    ].join(" ")}>{s.label}</div>
+                      "text-[8px] mt-0.5 font-medium text-center leading-tight truncate w-full px-0.5",
+                      isActive ? "text-foreground font-bold" : isDone ? "text-success/70" : "text-muted-foreground/40",
+                    ].join(" ")}>{activeLabel}</div>
                   </div>
-                  {i < STATUS_PIPELINE.length - 1 && (
-                    <div className={["h-0.5 flex-1 mx-1 transition-colors", done ? "bg-emerald-400" : "bg-border"].join(" ")} />
+                  {i < PIPELINE_NODES.length - 1 && (
+                    <div className={["h-0.5 flex-1 mx-1 shrink-0 transition-colors", isDone ? "bg-success/40" : "bg-border"].join(" ")} />
                   )}
                 </div>
               );
             })}
           </div>
 
-          {/* Big primary CTA for current step */}
+          {/* CTA block */}
           <div className="space-y-2">
             {appt.status === "booked" && (
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
                 <div className="text-xs font-semibold text-blue-800 flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5" />
-                  Step 1 — Call the patient to confirm they&apos;re coming
+                  <Phone className="h-3.5 w-3.5" />Step 1 — Call to confirm
                 </div>
                 <a href={`tel:${appt.phone}`}
                   className="flex items-center gap-2 rounded-md bg-white border border-primary/30 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors w-full justify-center">
@@ -1042,86 +1104,80 @@ function DetailDrawer({
             )}
             {appt.status === "confirmed" && (
               <div className="rounded-lg border border-border bg-secondary p-3 space-y-2">
-                <div className="text-xs font-semibold text-amber-800">Step 2 — When patient walks in, mark them as arrived</div>
-                <Button className="w-full bg-secondary0 hover:bg-amber-600 text-white border-0 h-10"
+                <div className="text-xs font-semibold text-amber-800">Step 2 — Mark arrived when patient walks in</div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 h-10"
                   onClick={() => onStatusChange(appt.id, "arrived")}>
                   Patient has Arrived →
                 </Button>
               </div>
             )}
-            {appt.status === "arrived" && !showTreatmentOtp && (
-              <div className="rounded-lg border border-border bg-secondary p-3 space-y-2">
-                <div className="text-xs font-semibold text-amber-800">Step 3 — Checkout the patient or start their treatment session</div>
-                <div className="flex gap-2">
-                  <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
-                    onClick={() => setTab("checkout")}>
-                    <ShoppingBag className="h-4 w-4 mr-1.5" />Checkout →
-                  </Button>
-                  <Button className="flex-1 bg-primary hover:bg-violet-700 text-white border-0 h-9"
-                    onClick={() => setShowTreatmentOtp(true)}>
-                    Treatment →
-                  </Button>
-                </div>
-              </div>
-            )}
-            {appt.status === "arrived" && showTreatmentOtp && (
-              <div className="rounded-lg border border-violet-200 bg-primary/5 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-violet-800">Treatment authorisation — patient confirms</div>
-                  <button onClick={() => { setShowTreatmentOtp(false); setTreatmentOtpInput(""); setTreatmentOtpOk(false); }}
-                    className="text-xs text-muted-foreground underline hover:text-foreground">Cancel</button>
-                </div>
-                <div className="rounded-xl border-2 border-violet-200 bg-white px-4 py-3 text-center space-y-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500">Session Code</div>
-                  <div className="text-4xl font-bold tracking-[0.25em] font-mono text-violet-900">
-                    {treatmentOtp.slice(0, 3)}-{treatmentOtp.slice(3)}
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={treatmentOtpInput}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                    setTreatmentOtpInput(val);
-                    if (val === treatmentOtp) {
-                      setTreatmentOtpOk(true);
-                      setTimeout(() => { setShowTreatmentOtp(false); setTab("treatment"); }, 600);
-                    }
-                  }}
-                  placeholder="Patient enters code"
-                  className="w-full text-center text-xl font-mono tracking-[0.3em] rounded-xl border-2 border-violet-300 py-2.5 px-4 focus:outline-none focus:border-violet-500 bg-white"
-                />
-                {treatmentOtpOk && (
-                  <div className="flex items-center justify-center gap-1.5 text-success text-sm font-semibold">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                    Confirmed — opening treatment…
-                  </div>
-                )}
-                {treatmentOtpInput.length === 6 && !treatmentOtpOk && (
-                  <div className="text-xs text-destructive text-center font-medium">Incorrect code — ask the patient to re-enter</div>
-                )}
-              </div>
-            )}
-            {appt.status === "in_session" && (
-              <div className="rounded-lg border border-violet-200 bg-primary/5 p-3">
-                <div className="text-xs font-semibold text-violet-800">Session in progress — fill treatment notes and mark complete in Treatment tab</div>
-              </div>
-            )}
-            {appt.status === "converted" && (
-              <div className="rounded-lg border border-success/30 bg-success/5 p-3 space-y-2">
-                <div className="text-xs font-semibold text-success">Session done ✓ — Record materials used in the Inventory tab</div>
-                <Button className="w-full bg-success hover:bg-emerald-700 text-white border-0 h-9"
-                  onClick={() => setTab("inventory")}>
-                  Open Inventory (FnO) →
+            {appt.status === "arrived" && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-violet-800">Patient is here — start the consultation</div>
+                <Button className="w-full bg-violet-500 hover:bg-violet-600 text-white border-0 h-9"
+                  onClick={() => onStatusChange(appt.id, "in_consultation")}>
+                  Start Consultation →
                 </Button>
               </div>
             )}
+            {(appt.status === "in_consultation" || appt.status === "in_session") && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-violet-800">Consultation in progress</div>
+                <Button className="w-full bg-teal-500 hover:bg-teal-600 text-white border-0 h-9"
+                  onClick={() => onStatusChange(appt.id, "consultation_done")}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />Mark Consultation Done
+                </Button>
+              </div>
+            )}
+            {appt.status === "consultation_done" && (
+              <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-teal-800">Consultation done ✓ — start treatment or mark done</div>
+                <div className="flex gap-2">
+                  <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 h-9"
+                    onClick={() => onStatusChange(appt.id, "in_treatment")}>
+                    Start Treatment →
+                  </Button>
+                  <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
+                    onClick={() => onStatusChange(appt.id, "done")}>
+                    Mark Done ✓
+                  </Button>
+                </div>
+              </div>
+            )}
+            {appt.status === "in_treatment" && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-orange-800">Treatment in progress — fill notes in Treatment tab</div>
+                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white border-0 h-9"
+                  onClick={() => { onStatusChange(appt.id, "treatment_done"); setTab("prescription"); }}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />Mark Treatment Done
+                </Button>
+              </div>
+            )}
+            {appt.status === "treatment_done" && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                <div className="text-xs font-semibold text-emerald-800">Treatment done ✓ — record inventory then close</div>
+                <div className="flex gap-2">
+                  <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
+                    onClick={() => setTab("inventory")}>
+                    Open Inventory →
+                  </Button>
+                  <Button className="flex-1 variant-outline h-9"
+                    onClick={() => onStatusChange(appt.id, "done")}>
+                    Mark Done ✓
+                  </Button>
+                </div>
+              </div>
+            )}
+            {(appt.status === "done" || appt.status === "converted") && (
+              <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                <div className="text-xs font-semibold text-success flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" />Session complete
+                </div>
+              </div>
+            )}
 
-            {/* Secondary actions always available */}
-            {!["converted","no_show","rescheduled"].includes(appt.status) && (
+            {/* Reschedule / no-show */}
+            {!["done","converted","no_show","rescheduled"].includes(appt.status) && (
               <div className="flex gap-2 pt-1">
                 {["booked","confirmed","arrived"].includes(appt.status) && (
                   <button className="flex-1 text-[11px] text-orange-600 border border-orange-200 rounded-md py-1.5 hover:bg-orange-50 transition-colors font-medium"
@@ -1143,10 +1199,11 @@ function DetailDrawer({
         {/* ── Tabs ── */}
         <div className="flex border-b border-border shrink-0 bg-card">
           {([
-            { key: "booking",   label: "1. Booking",  icon: User,          locked: false,           done: false },
-            { key: "checkout",  label: "2. Checkout",  icon: ShoppingBag,   locked: checkoutLocked,  done: checkoutDone },
-            { key: "treatment", label: "3. Treatment", icon: ClipboardList, locked: treatmentLocked, done: treatmentDone },
-            { key: "inventory", label: "4. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
+            { key: "booking",      label: "1. Booking",   icon: User,          locked: false,           done: false },
+            { key: "checkout",     label: "2. Checkout",  icon: ShoppingBag,   locked: checkoutLocked,  done: checkoutDone },
+            { key: "treatment",    label: "3. Treatment", icon: ClipboardList, locked: treatmentLocked, done: treatmentDone },
+            { key: "prescription", label: "4. Rx",        icon: FileText,      locked: rxLocked,        done: false },
+            { key: "inventory",    label: "5. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
           ] as { key: Tab; label: string; icon: any; locked: boolean; done: boolean }[]).map(t => (
             <button
               key={t.key}
@@ -1274,8 +1331,8 @@ function DetailDrawer({
               {checkoutLocked ? (
                 <div className="rounded-lg border border-border bg-secondary/30 p-6 text-center space-y-1">
                   <ShoppingBag className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-                  <div className="text-sm font-medium">Checkout unlocks when patient arrives</div>
-                  <div className="text-xs text-muted-foreground">Patient must be marked as Arrived first.</div>
+                  <div className="text-sm font-medium">Checkout unlocks after consultation</div>
+                  <div className="text-xs text-muted-foreground">Complete the consultation first, then select items here.</div>
                 </div>
               ) : (
                 <CheckoutFlow
@@ -1292,27 +1349,43 @@ function DetailDrawer({
 
           {/* ══ TAB 3: TREATMENT ══ */}
           {tab === "treatment" && (
-            <div className="p-5 space-y-5">
+            <div className="p-5 space-y-4">
               {treatmentLocked ? (
                 <div className="rounded-lg border border-border bg-secondary/30 p-6 text-center space-y-1">
                   <ClipboardList className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-                  <div className="text-sm font-medium">Treatment tab unlocks when patient arrives</div>
-                  <div className="text-xs text-muted-foreground">Go to the action bar above and click &quot;Patient Arrived&quot; first.</div>
+                  <div className="text-sm font-medium">Treatment unlocks after OTP verification</div>
+                  <div className="text-xs text-muted-foreground">Patient must verify the OTP and start treatment first.</div>
                 </div>
               ) : (
                 <>
-                  {/* Step 1: Photos */}
-                  <StepBlock
-                    num={1} title="Capture Before Photos"
-                    desc="Take photos before treatment for progress comparison in future sessions."
-                    done={photos.length > 0}
-                  >
-                    <div className="grid grid-cols-4 gap-2 mt-3">
+                  {/* Progress chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: `Photos (${photos.length}/4)`, done: photos.length > 0 },
+                      { label: "Consent", done: consentSigned },
+                      { label: "History", done: !!medHistory },
+                      { label: "Started", done: !!startedAt },
+                      { label: "Notes", done: !!treatmentNotes },
+                    ].map(c => (
+                      <span key={c.label} className={[
+                        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold border",
+                        c.done ? "bg-success/10 text-success border-success/30" : "bg-secondary text-muted-foreground border-border",
+                      ].join(" ")}>
+                        {c.done && <CheckCircle2 className="h-2.5 w-2.5" />}
+                        {c.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Photos + Consent */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Before Photos</div>
+                    <div className="grid grid-cols-4 gap-2">
                       {["Front","Left","Right","Close-up"].map(angle => {
                         const captured = photos.find(p => p.angle === angle);
                         return (
-                          <label key={angle} className={"flex flex-col items-center justify-center gap-1 rounded-lg border-2 cursor-pointer p-2 transition-colors " + (captured ? "border-emerald-400 bg-success/5" : "border-dashed border-border bg-secondary/20 hover:bg-secondary/60")}>
-                            {captured ? <CheckCircle2 className="h-5 w-5 text-success0" /> : <Camera className="h-4 w-4 text-muted-foreground" />}
+                          <label key={angle} className={"flex flex-col items-center justify-center gap-1 rounded-lg border-2 cursor-pointer p-2 transition-colors " + (captured ? "border-success/60 bg-success/5" : "border-dashed border-border bg-secondary/20 hover:bg-secondary/60")}>
+                            {captured ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Camera className="h-4 w-4 text-muted-foreground" />}
                             <span className="text-[10px] text-center">{angle}</span>
                             <input type="file" accept="image/*" className="sr-only"
                               onChange={e => {
@@ -1325,67 +1398,56 @@ function DetailDrawer({
                         );
                       })}
                     </div>
-                    <label className="flex items-center gap-2 text-sm mt-3 cursor-pointer select-none">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                       <input type="checkbox" checked={consentSigned} onChange={e => setConsentSigned(e.target.checked)} className="h-4 w-4 accent-primary" />
                       <span>Consent form signed &amp; uploaded</span>
-                      {consentSigned && <CheckCircle2 className="h-4 w-4 text-success0 ml-auto" />}
                     </label>
-                  </StepBlock>
+                  </div>
 
-                  {/* Step 2: Medical History */}
-                  <StepBlock num={2} title="Medical History &amp; Skin Type" desc="Note any allergies, medications, or contraindications. Select skin type for laser treatments.">
-                    <div className="mt-3 space-y-3">
-                      <textarea rows={3} value={medHistory} onChange={e => setMedHistory(e.target.value)}
-                        placeholder="Allergies, current medications, skin conditions, previous treatments, contraindications…"
-                        className={INPUT_CLS + " resize-none"} />
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1.5">Fitzpatrick Skin Type (for laser)</div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {BODY_TYPES.map(bt => (
-                            <button key={bt} onClick={() => setBodyType(bt)}
-                              className={"rounded border px-2 py-1.5 text-xs text-left transition-colors " + (bodyType === bt ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border hover:bg-secondary")}>
-                              {bt}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                  {/* Medical history + skin type */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Medical History &amp; Contraindications</div>
+                    <textarea rows={2} value={medHistory} onChange={e => setMedHistory(e.target.value)}
+                      placeholder="Allergies, current medications, skin conditions…"
+                      className={INPUT_CLS + " resize-none"} />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {BODY_TYPES.map(bt => (
+                        <button key={bt} onClick={() => setBodyType(bt)}
+                          className={"rounded border px-2 py-1.5 text-xs text-left transition-colors " + (bodyType === bt ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border hover:bg-secondary")}>
+                          {bt}
+                        </button>
+                      ))}
                     </div>
-                  </StepBlock>
+                  </div>
 
-                  {/* Step 3: Start session */}
-                  <StepBlock num={3} title="Start Session" desc="Tap below to timestamp session start. The appointment moves to 'In Session' on the board." done={!!startedAt}>
-                    <div className="mt-3">
-                      {startedAt ? (
-                        <div className="rounded-lg bg-success/5 border border-success/30 px-4 py-3 text-sm text-success font-medium flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 shrink-0" />Session started at {startedAt}
+                  {/* Session start */}
+                  {startedAt ? (
+                    <div className="flex items-center gap-2 rounded-lg bg-success/5 border border-success/30 px-3 py-2.5 text-sm text-success font-medium">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />Session started at {startedAt}
+                    </div>
+                  ) : (
+                    <Button className="w-full bg-primary hover:bg-primary/90" onClick={handleStartSession} disabled={saving}>
+                      <Clock className="h-4 w-4 mr-2" />Start Session Now
+                    </Button>
+                  )}
+
+                  {/* Treatment notes + complete (after session started) */}
+                  {(appt.status === "in_session" || startedAt) && (
+                    <div className="space-y-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Treatment Notes</div>
+                      <textarea rows={4} value={treatmentNotes} onChange={e => setTreatmentNotes(e.target.value)}
+                        placeholder="Parameters used, patient response, observations, next session plan…"
+                        className={INPUT_CLS + " resize-none"} />
+                      {treatmentDone ? (
+                        <div className="flex items-center gap-2 rounded-lg bg-success/5 border border-success/30 px-3 py-2.5 text-sm text-success font-medium">
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />Complete — record inventory in Inventory tab.
                         </div>
                       ) : (
-                        <Button className="w-full bg-primary hover:bg-violet-700" onClick={handleStartSession} disabled={saving}>
-                          <Clock className="h-4 w-4 mr-2" />Start Session Now
+                        <Button className="w-full bg-success hover:bg-emerald-700" onClick={handleCompleteSession} disabled={saving}>
+                          {saving ? "Saving…" : <><CheckCircle2 className="h-4 w-4 mr-2" />Mark Complete &amp; Open Inventory</>}
                         </Button>
                       )}
                     </div>
-                  </StepBlock>
-
-                  {/* Step 4: Treatment notes + complete */}
-                  {(appt.status === "in_session" || startedAt) && (
-                    <StepBlock num={4} title="Treatment Notes &amp; Complete" desc="Fill in what was done, then mark complete. This auto-opens the Inventory tab." done={treatmentDone}>
-                      <div className="mt-3 space-y-3">
-                        <textarea rows={4} value={treatmentNotes} onChange={e => setTreatmentNotes(e.target.value)}
-                          placeholder="Parameters used, patient response, any observations, next session plan…"
-                          className={INPUT_CLS + " resize-none"} />
-                        {!treatmentDone && (
-                          <Button className="w-full bg-success hover:bg-emerald-700" onClick={handleCompleteSession} disabled={saving}>
-                            {saving ? "Completing…" : <><CheckCircle2 className="h-4 w-4 mr-2" />Mark Session Complete &amp; Open Inventory</>}
-                          </Button>
-                        )}
-                        {treatmentDone && (
-                          <div className="rounded-lg bg-success/5 border border-success/30 px-4 py-3 text-sm text-success font-medium flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 shrink-0" />Session complete — go to the Inventory tab to record materials used.
-                          </div>
-                        )}
-                      </div>
-                    </StepBlock>
                   )}
                 </>
               )}
@@ -1470,6 +1532,30 @@ function DetailDrawer({
                   <Button className="w-full bg-success hover:bg-emerald-700 h-11" onClick={submitInventory} disabled={saving}>
                     {saving ? "Submitting…" : <><CheckCircle2 className="h-4 w-4 mr-2" />Submit &amp; Update Clinic Inventory</>}
                   </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ══ TAB 5: RX / PRODUCTS ══ */}
+          {tab === "prescription" && (
+            <div className="p-5">
+              {rxLocked ? (
+                <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+                  Prescription available after the consultation is marked done.
+                </div>
+              ) : (
+                <>
+                  <div className="text-xs text-muted-foreground mb-4">
+                    Review prescription and select what the patient is taking today.
+                  </div>
+                  <CheckoutFlow
+                    appointmentId={appt.id}
+                    patientId={appt.patient_id}
+                    patientName={appt.patient_name}
+                    serviceType={appt.service_type}
+                    onClose={() => setTab("booking")}
+                  />
                 </>
               )}
             </div>

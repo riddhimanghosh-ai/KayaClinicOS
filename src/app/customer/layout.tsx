@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./customer.css";
+import { Sidebar, MobileTopbar } from "@/components/sidebar";
 
 export const metadata: Metadata = {
   title: "Kaya — Your Skin & Hair Care",
@@ -7,5 +8,13 @@ export const metadata: Metadata = {
 };
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen flex">
+      <Sidebar />
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <MobileTopbar />
+        {children}
+      </div>
+    </div>
+  );
 }
