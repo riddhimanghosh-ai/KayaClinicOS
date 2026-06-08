@@ -133,6 +133,9 @@ export function Sidebar() {
           <span className="h-1.5 w-1.5 bg-success inline-block" />
           <span className="text-[10px] text-muted-foreground font-mono">System online</span>
         </div>
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <span className="text-[9px] text-muted-foreground/60 font-mono">* Future scope</span>
+        </div>
       </div>
     </aside>
   );
