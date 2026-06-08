@@ -300,7 +300,7 @@ function downloadPrescription() {
   <div class="top-bar"></div>
   <div class="logo">kaya</div>
   <div class="logo-sub">SKIN · HAIR · BODY</div>
-  <div class="logo-addr">14 Turner Road, Bandra West, Mumbai 400050 · +91 22 6789 1234 · Reg. MH-KY-00412</div>
+  <div class="logo-addr">14 Turner Road, 400050 · +91 22 6789 1234 · Reg. MH-KY-00412</div>
   <hr class="divider"/>
   <div class="band">
     <div><div class="band-label">Patient</div><div class="band-val">Priya R.</div><div class="band-sub">DOB 1997-03-14 · GDRC88421</div></div>

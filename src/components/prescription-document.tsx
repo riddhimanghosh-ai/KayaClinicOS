@@ -103,7 +103,7 @@ export function PrescriptionDocument({
             SKIN · HAIR · BODY
           </div>
           <div className="mt-2 text-xs text-[#6b7280]">
-            {clinic?.addressLine ?? "14 Turner Road, Bandra West, Mumbai 400050 · +91 22 6789 1234"} · Reg.{" "}
+            {clinic?.addressLine ?? "14 Turner Road, 400050 · +91 22 6789 1234"} · Reg.{" "}
             {clinic?.reg ?? "MH-KY-00412"}
           </div>
         </div>
