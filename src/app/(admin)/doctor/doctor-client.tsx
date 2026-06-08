@@ -197,6 +197,7 @@ export function DoctorClient({
             onTagSaved={() => refreshPortfolio(portfolio.patient.id)}
             onComplete={(fee) => dismissCheckIn(portfolio.patient.id, portfolio.patient.name, fee)}
             isLive={liveCheckIns.some(c => c.patient_id === portfolio.patient.id)}
+            isCompleted={completedPatients.some(c => c.id === portfolio.patient.id)}
           />
         )}
       </section>
@@ -211,14 +212,16 @@ function PortfolioView({
   onTagSaved,
   onComplete,
   isLive,
+  isCompleted,
 }: {
   portfolio: PatientPortfolio;
   onTagSaved: () => void;
   onComplete: (fee?: number) => void;
   isLive: boolean;
+  isCompleted?: boolean;
 }) {
   const p = portfolio.patient;
-  const [activeTab, setActiveTab] = useState("live");
+  const [activeTab, setActiveTab] = useState(isCompleted ? "visits" : "live");
   const [summaryKey, setSummaryKey] = useState(0);
   const [justCompleted, setJustCompleted] = useState(false);
 
@@ -290,11 +293,12 @@ function PortfolioView({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="live">Consult</TabsTrigger>
+          {!isCompleted && <TabsTrigger value="live">Consult</TabsTrigger>}
           <TabsTrigger value="visits">Visits</TabsTrigger>
           <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
         </TabsList>
 
+        {!isCompleted && (
         <TabsContent value="live">
           <div className="space-y-4">
             <LiveConsultPane
@@ -307,6 +311,7 @@ function PortfolioView({
             <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
           </div>
         </TabsContent>
+        )}
         <TabsContent value="visits">
           <VisitsTab
             portfolio={portfolio}

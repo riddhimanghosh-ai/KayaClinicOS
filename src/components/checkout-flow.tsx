@@ -266,7 +266,7 @@ export function CheckoutFlow({
             {/* Price badge */}
             <div className="shrink-0 text-right">
               {it.isTreatment ? (
-                <span className="text-xs text-muted-foreground">via package</span>
+                <span className="text-base font-bold tabular-nums text-primary">{inr(it.basePrice)}</span>
               ) : hasDiscount ? (
                 <div className="flex flex-col items-end">
                   <span className="text-xs line-through text-muted-foreground tabular-nums">{inr(it.basePrice)}</span>

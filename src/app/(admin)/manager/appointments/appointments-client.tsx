@@ -1202,8 +1202,8 @@ function DetailDrawer({
             { key: "booking",      label: "1. Booking",   icon: User,          locked: false,           done: false },
             { key: "checkout",     label: "2. Checkout",  icon: ShoppingBag,   locked: checkoutLocked,  done: checkoutDone },
             { key: "treatment",    label: "3. Treatment", icon: ClipboardList, locked: treatmentLocked, done: treatmentDone },
-            { key: "prescription", label: "4. Rx",        icon: FileText,      locked: rxLocked,        done: false },
-            { key: "inventory",    label: "5. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
+            { key: "inventory",    label: "4. Inventory", icon: Package,       locked: inventoryLocked, done: inventoryDone },
+            { key: "prescription", label: "5. Rx",        icon: FileText,      locked: rxLocked,        done: false },
           ] as { key: Tab; label: string; icon: any; locked: boolean; done: boolean }[]).map(t => (
             <button
               key={t.key}

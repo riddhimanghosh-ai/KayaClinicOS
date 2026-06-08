@@ -380,60 +380,33 @@ const BookingModal = ({ onClose }: { onClose: () => void }) => {
 
 const DashboardDesktop = () => {
   const router = useRouter();
-  const [showBooking, setShowBooking] = useState(false);
 
   const quickLinks = [
-    { icon: <IconAppt size={20} />,    title: 'Session History', sub: '9 sessions',      href: '/customer/sessions' },
-    { icon: <IconMed size={20} />,     title: 'My Rx',           sub: '5 active',        href: '/customer/prescriptions' },
-    { icon: <IconProgress size={20} />,title: 'Progress',        sub: '56-day timeline', href: '/customer/before-after' },
     { icon: <IconRewards size={20} />, title: 'Loyalty',         sub: 'Gold · 2,840 pts',href: '/customer/loyalty' },
-  ];
-
-  const stats = [
-    { label: 'Sessions done',  value: '9',    suffix: '' },
-    { label: 'Active Rx',      value: '5',    suffix: 'items' },
-    { label: 'Loyalty pts',    value: '2,840',suffix: 'Gold' },
   ];
 
   const treatmentProgress = { label: 'HydraFacial · Phase 3', used: 1, total: 4, pct: 25 };
 
   return (
     <div className="frame" style={{ display: 'flex' }}>
-      {showBooking && <BookingModal onClose={() => setShowBooking(false)} />}
       <NavRail active="dashboard" />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         <Topbar
           subtitle="Kaya · Patient Portal"
           title="Overview"
-          right={
-            <button className="btn sm" style={{ background: 'var(--brand)', color: '#fff', border: 'none' }} onClick={() => setShowBooking(true)}>
-              + Book a visit
-            </button>
-          }
         />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 48px' }}>
 
           {/* Greeting row */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Hi Priya</div>
-              <div style={{ fontSize: 13, color: 'var(--mute)', marginTop: 6, fontFamily: 'var(--mono)' }}>27 May · Wednesday</div>
-            </div>
-            {/* Stats strip */}
-            <div style={{ display: 'flex', gap: 24, padding: '12px 20px', border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
-              {stats.map((s, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '-0.02em', color: 'var(--ink)' }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: 'var(--mute)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
+          <div>
+            <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Hi Priya</div>
+            <div style={{ fontSize: 13, color: 'var(--mute)', marginTop: 6, fontFamily: 'var(--mono)' }}>27 May · Wednesday</div>
           </div>
 
-          {/* Two-column layout */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, marginTop: 20 }}>
+          {/* Content */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
 
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -479,9 +452,9 @@ const DashboardDesktop = () => {
               </div>
 
               {/* Quick links grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: 10 }}>
                 {quickLinks.map((card, i) => (
-                  <div key={i} className="panel" onClick={() => router.push(card.href)} style={{ padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div key={i} className="panel" onClick={() => router.push(card.href)} style={{ padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                     <div style={{ width: 36, height: 36, border: '1px solid var(--hair)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)', flexShrink: 0 }}>{card.icon}</div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{card.title}</div>
@@ -490,70 +463,6 @@ const DashboardDesktop = () => {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Right column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Book a visit CTA */}
-              <div style={{ background: 'var(--brand)', color: '#fff', padding: '20px 20px', cursor: 'pointer' }} onClick={() => setShowBooking(true)}>
-                <div style={{ fontSize: 10, letterSpacing: '0.12em', fontFamily: 'var(--mono)', opacity: 0.7, marginBottom: 8 }}>KAYA SKIN CLINIC</div>
-                <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}>Book your next visit</div>
-                <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6, lineHeight: 1.5 }}>Bandra West · Bandra 2 · 8 doctors available this week</div>
-                <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, background: 'rgba(255,255,255,0.18)', padding: '8px 16px' }}>Schedule now →</span>
-                </div>
-              </div>
-
-              {/* Reminders */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }} />
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mute)' }}>Reminders</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--mute)' }}>2 active</span>
-                </div>
-                <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-                  {[
-                    { text: 'Skip retinoids for the next 48h before your Saturday session', accent: 'var(--brand)' },
-                    { text: 'Consent form for Sat 31 session is still unsigned — quick tick to confirm', accent: 'var(--hair-strong)' },
-                  ].map((r, i) => (
-                    <div key={i} style={{
-                      padding: '13px 14px',
-                      borderBottom: i === 0 ? '1px solid var(--hair)' : 'none',
-                      borderLeft: '3px solid ' + r.accent,
-                      fontSize: 12, lineHeight: 1.5,
-                    }}>{r.text}</div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Skin snapshot */}
-              <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--hair)' }}>
-                  <div style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mute)' }}>Skin progress</div>
-                </div>
-                {[
-                  { label: 'Pigmentation',  pct: 34, note: '66% reduction' },
-                  { label: 'Texture',       pct: 16, note: '84% clearer' },
-                  { label: 'Hydration',     pct: 10, note: 'Optimal range' },
-                ].map((m, i) => (
-                  <div key={i} style={{ padding: '10px 16px', borderBottom: i < 2 ? '1px solid var(--hair)' : 'none' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                      <span>{m.label}</span>
-                      <span style={{ color: 'var(--mute)', fontSize: 11 }}>{m.note}</span>
-                    </div>
-                    <AnimatedMeter pct={m.pct} gold={i === 0} brand={i === 1} />
-                  </div>
-                ))}
-                <div style={{ padding: '10px 16px' }}>
-                  <button className="btn ghost sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => router.push('/customer/before-after')}>
-                    View full progress →
-                  </button>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
@@ -564,11 +473,9 @@ const DashboardDesktop = () => {
 
 const DashboardMobile = () => {
   const router = useRouter();
-  const [showBooking, setShowBooking] = useState(false);
 
   return (
     <MobileShell active="home">
-      {showBooking && <BookingModal onClose={() => setShowBooking(false)} />}
       <div style={{ height: '100%', overflow: 'auto' }}>
         <div style={{ padding: '16px 16px 100px' }}>
 
@@ -578,30 +485,10 @@ const DashboardMobile = () => {
               <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em' }}>Hi Priya</div>
               <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>27 May · Wednesday</div>
             </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[
-                { v: '9', l: 'Sessions' },
-                { v: '5', l: 'Active Rx' },
-                { v: '2.8k', l: 'Points' },
-              ].map((s, i) => (
-                <div key={i} style={{ textAlign: 'center', padding: '8px 10px', background: 'var(--paper-2)', border: '1px solid var(--hair)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '-0.01em' }}>{s.v}</div>
-                  <div style={{ fontSize: 9, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>{s.l}</div>
-                </div>
-              ))}
+            <div style={{ textAlign: 'center', padding: '8px 10px', background: 'var(--paper-2)', border: '1px solid var(--hair)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '-0.01em' }}>2.8k</div>
+              <div style={{ fontSize: 9, color: 'var(--mute)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>Points</div>
             </div>
-          </div>
-
-          {/* Book a visit CTA */}
-          <div
-            onClick={() => setShowBooking(true)}
-            style={{ background: 'var(--brand)', color: '#fff', padding: '16px', marginBottom: 12, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Book a visit</div>
-              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>8 doctors available this week</div>
-            </div>
-            <span style={{ fontSize: 18, opacity: 0.9 }}>→</span>
           </div>
 
           {/* Next appointment */}
@@ -635,40 +522,16 @@ const DashboardMobile = () => {
           </div>
 
           {/* Quick action cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-            {[
-              { Icon: IconAppt,    label: 'Session History', sub: '9 sessions', href: '/customer/sessions' },
-              { Icon: IconMed,     label: 'My Rx',           sub: '5 active',   href: '/customer/prescriptions' },
-              { Icon: IconProgress,label: 'Progress',        sub: '56 days',    href: '/customer/before-after' },
-              { Icon: IconRewards, label: 'Loyalty',         sub: 'Gold · 2,840',href: '/customer/loyalty' },
-            ].map((card, i) => (
-              <div key={i} className="panel" onClick={() => router.push(card.href)} style={{ padding: 12, cursor: 'pointer' }}>
-                <div style={{ width: 30, height: 30, border: '1px solid var(--rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, color: 'var(--brand)' }}>
-                  <card.Icon size={15} stroke={1.4} />
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 600 }}>{card.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--mute)', marginTop: 2 }}>{card.sub}</div>
+          <div style={{ marginBottom: 12 }}>
+            <div className="panel" onClick={() => router.push('/customer/loyalty')} style={{ padding: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 30, height: 30, border: '1px solid var(--rule)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)', flexShrink: 0 }}>
+                <IconRewards size={15} stroke={1.4} />
               </div>
-            ))}
-          </div>
-
-          {/* Reminders */}
-          <div className="panel" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div className="eyebrow gold dot">Reminders</div>
-              <span style={{ fontSize: 10, color: 'var(--mute)' }}>2 active</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>Loyalty</div>
+                <div style={{ fontSize: 10, color: 'var(--mute)', marginTop: 2 }}>Gold · 2,840</div>
+              </div>
             </div>
-            {[
-              { text: 'Skip retinoids for the next 48h before your Saturday session', hi: true },
-              { text: 'Consent form for Sat 31 session is still unsigned', hi: false },
-            ].map((r, i) => (
-              <div key={i} style={{
-                padding: '9px 10px', marginTop: i > 0 ? 6 : 0,
-                background: r.hi ? 'var(--accent-soft)' : 'var(--paper-2)',
-                borderLeft: `3px solid ${r.hi ? 'var(--brand)' : 'var(--hair-strong)'}`,
-                fontSize: 12, lineHeight: 1.45,
-              }}>{r.text}</div>
-            ))}
           </div>
 
         </div>

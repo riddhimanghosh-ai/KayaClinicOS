@@ -45,6 +45,7 @@ export type Product = {
   item_code: string | null;
   is_new_launch: number | null;
   discount_pct: number | null;
+  stock_qty: number | null;
 };
 
 export type Package = {

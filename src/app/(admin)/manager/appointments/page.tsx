@@ -1,4 +1,4 @@
-import { getAppointments } from "@/lib/db";
+import { getAppointments, resetDemoSchedule } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { AppointmentsClient } from "./appointments-client";
 
@@ -10,6 +10,8 @@ export default function AppointmentsPage({
   searchParams: { date?: string; open?: string };
 }) {
   const date = searchParams.date ?? new Date().toISOString().slice(0, 10);
+  // Reset today's demo appointments to their seed state on every page load.
+  if (!searchParams.date) resetDemoSchedule();
   const appointments = getAppointments(date);
   return (
     <div className="space-y-6">

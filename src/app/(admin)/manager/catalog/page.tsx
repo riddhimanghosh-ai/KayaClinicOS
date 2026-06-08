@@ -9,8 +9,8 @@ export default function CatalogPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Product & Service Catalog"
-        subtitle="Search by name, item code, or filter by discounts and new launches."
+        title="Catalogue"
+        subtitle="Browse products & services — search by name, SKU, or category. Tap any item to see alternatives."
       />
       <CatalogClient initialProducts={products} initialServices={services} />
     </div>

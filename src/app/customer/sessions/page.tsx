@@ -199,7 +199,6 @@ const UpcomingContent = ({ onBook }: { onBook: () => void }) => (
   <div>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
       <div style={{ fontSize: 13, color: 'var(--mute)' }}>3 visits ahead</div>
-      <button className="btn sm" onClick={onBook}><IconPlus size={13} /> Book a visit</button>
     </div>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {UPCOMING.map((a, i) => (
@@ -259,6 +258,13 @@ const PastContent = () => {
                   <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.7, fontStyle: 'italic', borderLeft: '2px solid var(--gold)', paddingLeft: 12 }}>
                     {p.summary}
                   </div>
+                  {p.type === 'Consultation' && (
+                    <div style={{ marginTop: 12 }}>
+                      <button className="btn ghost sm" style={{ fontSize: 11 }}>
+                        ↓ Download prescription
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -432,7 +438,6 @@ const MedicationsContent = () => (
           <div>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
             <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 2 }}>{m.qty} · {m.date}</div>
-            {m.note && <div style={{ fontSize: 10, color: 'var(--gold)', marginTop: 2, fontWeight: 500 }}>{m.note}</div>}
           </div>
           <IconCheck size={14} style={{ color: 'var(--ok)', opacity: 0.7, flexShrink: 0 }} />
         </div>
