@@ -20,14 +20,14 @@ function getTreatmentStatus(row: TreatmentOpsRow): "not_started" | "in_progress"
 }
 
 function getFnoStatus(row: TreatmentOpsRow): "not_applicable" | "pending" | "complete" {
-  if (!["converted", "in_session"].includes(row.appt_status)) return "not_applicable";
+  if (!["converted", "in_session", "in_treatment", "treatment_done"].includes(row.appt_status)) return "not_applicable";
   if (!row.fno_id) return "pending";
   if (row.fno_status === "submitted") return "complete";
   return "pending";
 }
 
 function isPendingTreatment(row: TreatmentOpsRow) {
-  return ["arrived", "in_session"].includes(row.appt_status) && getTreatmentStatus(row) !== "complete";
+  return ["arrived", "in_session", "in_treatment"].includes(row.appt_status) && getTreatmentStatus(row) !== "complete";
 }
 
 function isPendingFno(row: TreatmentOpsRow) {
@@ -199,7 +199,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
 
                     {/* Middle: treatment status */}
                     <div className="flex items-stretch border-t sm:border-t-0 sm:border-l border-border">
-                      <div className="px-4 py-3 space-y-1.5 min-w-[180px]">
+                      <div className="px-4 py-3 space-y-1.5 w-[190px] shrink-0">
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <ClipboardList className="h-3 w-3" />Treatment
                         </div>
@@ -230,7 +230,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
 
                     {/* Right: FnO status */}
                     <div className="flex items-stretch border-t sm:border-t-0 sm:border-l border-border">
-                      <div className="px-4 py-3 space-y-1.5 min-w-[160px]">
+                      <div className="px-4 py-3 space-y-1.5 w-[160px] shrink-0">
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <Package className="h-3 w-3" />Inventory (FnO)
                         </div>
@@ -250,7 +250,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                     </div>
 
                     {/* Action CTA */}
-                    <div className="flex items-center border-t sm:border-t-0 sm:border-l border-border px-4 py-3 shrink-0">
+                    <div className="flex items-center border-t sm:border-t-0 sm:border-l border-border px-4 py-3 w-[200px] shrink-0">
                       {isPendingTreatment(row) && (
                         <div className="flex flex-col gap-1.5">
                           <a
@@ -264,7 +264,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                           )}
                         </div>
                       )}
-                      {(isPendingFno(row) && (tStatus === "complete" || row.appt_status === "converted")) && (
+                      {(isPendingFno(row) && (tStatus === "complete" || ["converted","treatment_done"].includes(row.appt_status))) && (
                         <a
                           href={`/manager/fno/${row.appointment_id}`}
                           className="flex items-center gap-1.5 rounded-lg bg-amber-500 text-white px-3 py-2 text-xs font-semibold hover:bg-amber-600 transition-colors whitespace-nowrap"

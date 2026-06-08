@@ -126,15 +126,15 @@ const KAYA_SEED_STATUSES: Record<string, string> = {
   KAYA200000: "done",
   KAYA200137: "in_consultation",
   KAYA200274: "consultation_done",
-  KAYA200411: "arrived",
+  KAYA200411: "arrived",          // Treatment & FnO: pending treatment
   KAYA200548: "booked",
-  KAYA200685: "in_treatment",
-  KAYA200822: "treatment_done",
+  KAYA200685: "in_treatment",     // Treatment & FnO: session in progress
+  KAYA200822: "converted",        // Treatment & FnO: treatment done, FnO pending
   KAYA200959: "booked",
   KAYA201096: "confirmed",
-  KAYA201233: "arrived",
+  KAYA201233: "arrived",          // Treatment & FnO: pending treatment
   KAYA201370: "consultation_done",
-  KAYA201507: "booked",
+  KAYA201507: "converted",        // Treatment & FnO: fully complete (ps + fno done)
 };
 
 export function resetDemoSchedule(): void {
@@ -164,6 +164,48 @@ export function resetDemoSchedule(): void {
         WHERE contact_booking_number LIKE 'KAYA%' AND date(appointment_ts) = ?
       )
     `).run(today);
+
+    // Seed rich practitioner + FnO sessions so Treatment & FnO shows all demo states
+    type ApptIdRow = { id: number };
+
+    // KAYA200685 — in_treatment: session in progress, consent signed
+    const inTreatAppt = d.prepare(
+      "SELECT id FROM appointments WHERE contact_booking_number = ? AND date(appointment_ts) = ?"
+    ).get("KAYA200685", today) as ApptIdRow | undefined;
+    if (inTreatAppt) {
+      d.prepare(`
+        INSERT INTO practitioner_sessions (appointment_id, patient_id, status, consent_signed, started_at)
+        SELECT ?, patient_id, 'in_progress', 1, datetime('now', '-22 minutes')
+        FROM appointments WHERE id = ?
+      `).run(inTreatAppt.id, inTreatAppt.id);
+    }
+
+    // KAYA200822 — converted: treatment complete, FnO pending
+    const fnoAppt = d.prepare(
+      "SELECT id FROM appointments WHERE contact_booking_number = ? AND date(appointment_ts) = ?"
+    ).get("KAYA200822", today) as ApptIdRow | undefined;
+    if (fnoAppt) {
+      d.prepare(`
+        INSERT INTO practitioner_sessions (appointment_id, patient_id, status, consent_signed, started_at, completed_at, treatment_notes)
+        SELECT ?, patient_id, 'completed', 1, datetime('now', '-95 minutes'), datetime('now', '-55 minutes'), 'Procedure completed successfully. Patient tolerated well. No adverse reactions.'
+        FROM appointments WHERE id = ?
+      `).run(fnoAppt.id, fnoAppt.id);
+    }
+
+    // KAYA201507 — converted: fully complete (ps completed + fno submitted)
+    const doneAppt = d.prepare(
+      "SELECT id FROM appointments WHERE contact_booking_number = ? AND date(appointment_ts) = ?"
+    ).get("KAYA201507", today) as ApptIdRow | undefined;
+    if (doneAppt) {
+      d.prepare(`
+        INSERT INTO practitioner_sessions (appointment_id, patient_id, status, consent_signed, started_at, completed_at, treatment_notes)
+        SELECT ?, patient_id, 'completed', 1, datetime('now', '-150 minutes'), datetime('now', '-110 minutes'), 'Full session completed. Laser parameters documented. Follow-up in 4 weeks.'
+        FROM appointments WHERE id = ?
+      `).run(doneAppt.id, doneAppt.id);
+      d.prepare(
+        "INSERT INTO fno_sessions (appointment_id, status, submitted_at) VALUES (?, 'submitted', datetime('now', '-100 minutes'))"
+      ).run(doneAppt.id);
+    }
   } catch {}
 }
 
@@ -1933,7 +1975,7 @@ export function getTreatmentOps(lookbackDays = 30): TreatmentOpsRow[] {
     LEFT JOIN doctors doc ON doc.id = a.doctor_id
     LEFT JOIN practitioner_sessions ps ON ps.appointment_id = a.id
     LEFT JOIN fno_sessions          fs ON fs.appointment_id = a.id
-    WHERE a.status IN ('arrived','in_session','converted','rescheduled')
+    WHERE a.status IN ('arrived','in_session','in_treatment','converted','treatment_done','rescheduled')
       AND date(a.appointment_ts) >= date('now', '-' || ? || ' days')
     ORDER BY a.appointment_ts DESC
   `).all(lookbackDays) as TreatmentOpsRow[];
