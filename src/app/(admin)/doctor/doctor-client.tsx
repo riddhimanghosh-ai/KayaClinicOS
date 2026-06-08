@@ -1847,52 +1847,63 @@ function ConsultSection({
           </div>
         </div>
 
-        {/* ── 3. Consultation results ── */}
+        {/* ── 3. Consultation results — collapsed in accordion ── */}
         {processing && (
           <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
             <Loader2 className="h-4 w-4 animate-spin" /> Transcribing &amp; extracting data points…
           </div>
         )}
         {consultResult && (
-          <div className="space-y-4">
-            {Object.keys(consultResult.attributes).length > 0 && (
+          <details className="rounded-lg border border-border overflow-hidden">
+            <summary className="flex items-center justify-between px-4 py-3 cursor-pointer bg-secondary/20 hover:bg-secondary/40 transition-colors select-none list-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Consultation data points &amp; transcript
+              </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </summary>
+            <div className="px-4 py-4 space-y-4">
+              {Object.keys(consultResult.attributes).length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data points extracted for cohorts</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(consultResult.attributes).map(([k, v]) => (
+                      <Badge key={k} variant="accent" className="text-[11px]">{formatLabel(k)}: {v}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data points extracted for cohorts</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(consultResult.attributes).map(([k, v]) => (
-                    <Badge key={k} variant="accent" className="text-[11px]">{formatLabel(k)}: {v}</Badge>
-                  ))}
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Masked transcript</div>
+                <div className="max-h-40 overflow-auto rounded-md border border-border bg-secondary/20 p-3 text-sm leading-relaxed whitespace-pre-wrap">
+                  {consultResult.masked}
                 </div>
               </div>
-            )}
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Masked transcript</div>
-              <div className="max-h-40 overflow-auto rounded-md border border-border bg-secondary/20 p-3 text-sm leading-relaxed whitespace-pre-wrap">
-                {consultResult.masked}
-              </div>
             </div>
-          </div>
+          </details>
         )}
 
-        {/* ── 4. Post-consult results ── */}
+        {/* ── 4. Post-consult results — collapsed in accordion ── */}
         {noteProcessing && (
           <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
             <Loader2 className="h-4 w-4 animate-spin" /> Extracting structured tags…
           </div>
         )}
         {noteResult && (
-          <div className="space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Post-consult tags — flowing into cohort engine
-            </div>
-            <div className="flex flex-wrap gap-1.5">
+          <details className="rounded-lg border border-border overflow-hidden">
+            <summary className="flex items-center justify-between px-4 py-3 cursor-pointer bg-secondary/20 hover:bg-secondary/40 transition-colors select-none list-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Post-consult tags
+              </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </summary>
+            <div className="px-4 py-4 flex flex-wrap gap-1.5">
               {Object.entries(noteResult).map(([k, v]) => (
                 <Badge key={k} variant="accent" className="text-[11px]">
                   {formatLabel(k)}: {v}
                 </Badge>
               ))}
             </div>
-          </div>
+          </details>
         )}
 
         {/* ── 5. Prescription form ── */}
