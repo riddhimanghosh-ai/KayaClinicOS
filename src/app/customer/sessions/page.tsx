@@ -69,9 +69,9 @@ const PRESCRIPTIONS = [
     label: 'Initial prescription',
     recommendation: 'Starting regimen for mild PIH and hormonal acne. Keep routine minimal — focus on actives that target pigment and barrier. Introduce retinoid slowly (every other night for 2 weeks).',
     items: [
-      { problem: 'Post-inflammatory hyperpigmentation', type: 'Chronic', product: 'Kaya Niacinamide 10% Serum', detail: '30ml', dosage: '2–3 drops', dosageDetail: 'AM + PM · mix with moisturiser' },
-      { problem: 'Active acne', type: 'Acute', product: 'Kaya Clarifying Face Wash', detail: '100ml', dosage: 'Twice daily', dosageDetail: 'AM + PM · gentle lather, rinse cool' },
-      { problem: 'Sun protection (mandatory)', type: null, product: 'Kaya Daily Shield SPF 50 PA++++', detail: '50ml', dosage: 'Generous application', dosageDetail: 'AM · every morning without fail' },
+      { problem: 'Post-inflammatory hyperpigmentation', type: 'Chronic', product: 'Kaya Niacinamide 10% Serum', detail: '30ml', dosage: '2–3 drops', dosageDetail: 'AM + PM · mix with moisturiser', cost: 750 },
+      { problem: 'Active acne', type: 'Acute', product: 'Kaya Clarifying Face Wash', detail: '100ml', dosage: 'Twice daily', dosageDetail: 'AM + PM · gentle lather, rinse cool', cost: 450 },
+      { problem: 'Sun protection (mandatory)', type: null, product: 'Kaya Daily Shield SPF 50 PA++++', detail: '50ml', dosage: 'Generous application', dosageDetail: 'AM · every morning without fail', cost: 950 },
     ],
   },
 ];
@@ -229,196 +229,110 @@ const UpcomingContent = ({ onBook }: { onBook: () => void }) => (
 
 const CONSULTATION_IDX = PAST.length - 1; // Initial consultation is always the last entry
 
-async function downloadPrescription() {
-  const { jsPDF } = await import('jspdf');
+function downloadPrescription() {
   const rx = PRESCRIPTIONS[1];
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  const W = doc.internal.pageSize.getWidth();
-  const m = 48; // margin
-  const teal: [number,number,number] = [31, 122, 90];
-  const ink:  [number,number,number] = [31, 41, 55];
-  const mute: [number,number,number] = [107, 114, 128];
-  const hair: [number,number,number] = [229, 231, 235];
-  let y = 0;
-
-  // ── Teal top bar ─────────────────────────────────────────────────────────
-  doc.setFillColor(...teal);
-  doc.rect(0, 0, W, 5, 'F');
-  y = 32;
-
-  // ── Kaya header ───────────────────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
-  doc.setTextColor(...ink);
-  doc.text('kaya', m, y);
-  y += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...mute);
-  doc.setCharSpace(2);
-  doc.text('SKIN · HAIR · BODY', m, y);
-  doc.setCharSpace(0);
-  y += 12;
-  doc.setFontSize(9);
-  doc.text('128 Willow Street · (415) 555-0192 · Reg. KC-204189', m, y);
-  y += 20;
-
-  // ── Patient band ──────────────────────────────────────────────────────────
-  doc.setDrawColor(...hair);
-  doc.setLineWidth(0.5);
-  doc.line(m, y, W - m, y);
-  y += 16;
-
-  const bandCols = [m, m + 150, m + 290, m + 380];
-  const bandLabels = ['PATIENT', 'PRESCRIBING PHYSICIAN', 'AGE', 'DATE ISSUED'];
-  const bandVals   = ['Priya R.', rx.doctor, '28 yrs · F', rx.date];
-  const bandSubs   = ['DOB 1997-03-14 · GDRC88421', 'Dermatology', '', 'Valid 30 days'];
-
-  bandLabels.forEach((lbl, i) => {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...mute);
-    doc.setCharSpace(1.2);
-    doc.text(lbl, bandCols[i], y);
-    doc.setCharSpace(0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(...ink);
-    doc.text(bandVals[i], bandCols[i], y + 14);
-    if (bandSubs[i]) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(...mute);
-      doc.text(bandSubs[i], bandCols[i], y + 26);
-    }
-  });
-  y += 44;
-  doc.line(m, y, W - m, y);
-  y += 22;
-
-  // ── Clinical recommendation ───────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...teal);
-  doc.setCharSpace(1.5);
-  doc.text('CLINICAL RECOMMENDATION', m, y);
-  doc.setCharSpace(0);
-  y += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10.5);
-  doc.setTextColor(...ink);
-  const recLines = doc.splitTextToSize(rx.recommendation, W - m * 2);
-  doc.text(recLines, m, y);
-  y += recLines.length * 14 + 22;
-
-  // ── Treatment plan ────────────────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...teal);
-  doc.setCharSpace(1.5);
-  doc.text('TREATMENT PLAN', m, y);
-  doc.setCharSpace(0);
-  y += 14;
-
-  // Table header row
-  const colX  = [m, m + 168, m + 336];
-  const costX = W - m;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...mute);
-  doc.text('PROBLEM', colX[0], y);
-  doc.text('PRODUCT / MEDICINE', colX[1], y);
-  doc.text('DOSAGE', colX[2], y);
-  doc.text('COST', costX, y, { align: 'right' });
-  y += 6;
-  doc.setDrawColor(...hair);
-  doc.setLineWidth(0.5);
-  doc.line(m, y, W - m, y);
-  y += 14;
-
-  // Rows
-  rx.items.forEach(item => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(...ink);
-    doc.text(item.problem, colX[0], y, { maxWidth: 158 });
-    doc.text(item.product, colX[1], y, { maxWidth: 158 });
-    doc.text(item.dosage, colX[2], y, { maxWidth: 158 });
-    const cost = (item as any).cost;
-    if (cost) {
-      doc.text(`₹${cost.toLocaleString('en-IN')}`, costX, y, { align: 'right' });
-    } else {
-      doc.setTextColor(...mute);
-      doc.text('—', costX, y, { align: 'right' });
-      doc.setTextColor(...ink);
-    }
-
-    // Sub labels
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...mute);
-    if (item.type) {
-      const badgeCols: Record<string, [number,number,number]> = {
-        chronic: [157, 23, 77],
-        acute:   [185, 28, 28],
-      };
-      const bc = badgeCols[item.type.toLowerCase()] ?? mute;
-      doc.setTextColor(...bc);
-      doc.setFontSize(8);
-      doc.text(item.type.charAt(0).toUpperCase() + item.type.slice(1), colX[0], y + 13);
-      doc.setTextColor(...mute);
-      doc.setFontSize(9);
-    }
-    doc.text(item.detail, colX[1], y + 13);
-    doc.text(item.dosageDetail, colX[2], y + 13, { maxWidth: 158 });
-
-    y += 38;
-    doc.setDrawColor(243, 244, 246);
-    doc.line(m, y - 8, W - m, y - 8);
-    doc.setDrawColor(...hair);
-  });
-
-  y += 10;
-  doc.setDrawColor(...hair);
-  doc.line(m, y, W - m, y);
-  y += 16;
-
-  // ── Footer totals + signature ─────────────────────────────────────────────
-  const subtotal = rx.items.reduce((s, it) => s + ((it as any).cost || 0), 0);
+  const subtotal   = rx.items.reduce((s, it) => s + ((it as any).cost || 0), 0);
   const dispensing = 60;
-  const total = subtotal + dispensing;
+  const total      = subtotal + dispensing;
+  const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...mute);
-  doc.text('Subtotal', m, y);
-  doc.text(subtotal > 0 ? `₹${subtotal.toLocaleString('en-IN')}` : '—', m + 100, y);
-  y += 16;
-  doc.text('Dispensing fee', m, y);
-  doc.text(`₹${dispensing}`, m + 100, y);
-  y += 10;
-  doc.setDrawColor(...hair);
-  doc.line(m, y, m + 160, y);
-  y += 12;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...ink);
-  doc.text('Estimated total', m, y);
-  doc.text(total > dispensing ? `₹${total.toLocaleString('en-IN')}` : `₹${dispensing}`, m + 100, y);
+  const rows = rx.items.map(item => {
+    const cost = (item as any).cost;
+    const typeColor = item.type?.toLowerCase() === 'chronic' ? '#9d174d' : '#b91c1c';
+    return `
+      <tr>
+        <td>
+          <div class="bold">${item.problem}</div>
+          ${item.type ? `<span class="badge" style="color:${typeColor};border-color:${typeColor}20;background:${typeColor}10">${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>` : ''}
+        </td>
+        <td>
+          <div class="bold">${item.product}</div>
+          <div class="sub">${item.detail}</div>
+        </td>
+        <td>
+          <div class="bold">${item.dosage}</div>
+          <div class="sub">${item.dosageDetail}</div>
+        </td>
+        <td class="cost">${cost ? inr(cost) : '<span style="color:#9ca3af">—</span>'}</td>
+      </tr>`;
+  }).join('');
 
-  // Physician signature
-  doc.setFont('helvetica', 'bolditalic');
-  doc.setFontSize(20);
-  doc.setTextColor(...ink);
-  doc.text(rx.doctor.replace(/^Dr\.?\s*/i, ''), W - m, y - 8, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...mute);
-  doc.setCharSpace(1.5);
-  doc.text('PHYSICIAN SIGNATURE', W - m, y + 8, { align: 'right' });
-  doc.setCharSpace(0);
+  const html = `<!DOCTYPE html><html lang="en"><head>
+  <meta charset="utf-8"/>
+  <title>Kaya Prescription — ${rx.date}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;color:#1f2937;background:#fff;padding:48px;max-width:900px;margin:0 auto}
+    .top-bar{height:5px;background:#1f7a5a;margin:-48px -48px 40px;width:calc(100% + 96px)}
+    .logo{font-size:32px;font-weight:700;letter-spacing:-.02em;color:#1f2937}
+    .logo-sub{font-size:10px;font-weight:600;letter-spacing:.2em;color:#6b7280;margin-top:4px}
+    .logo-addr{font-size:12px;color:#6b7280;margin-top:6px}
+    .divider{border:none;border-top:1px solid #e5e7eb;margin:20px 0}
+    .band{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:16px 0}
+    .band-label{font-size:10px;font-weight:600;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:6px}
+    .band-val{font-size:14px;font-weight:600;color:#1f2937}
+    .band-sub{font-size:12px;color:#6b7280;margin-top:3px}
+    .section-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:#1f7a5a;text-transform:uppercase;margin-bottom:10px}
+    .rec{font-size:14px;line-height:1.7;color:#374151;margin-bottom:28px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{font-size:10px;font-weight:600;letter-spacing:.1em;color:#9ca3af;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:1px solid #e5e7eb}
+    thead th.cost{text-align:right}
+    tbody tr{border-bottom:1px solid #f3f4f6}
+    tbody td{padding:14px 12px;vertical-align:top}
+    .bold{font-weight:600;color:#1f2937;line-height:1.4}
+    .sub{font-size:12px;color:#6b7280;margin-top:3px;line-height:1.4}
+    .badge{display:inline-block;font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;border:1px solid;margin-top:5px}
+    td.cost{text-align:right;font-weight:500;white-space:nowrap}
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb}
+    .totals{font-size:13px;color:#6b7280;display:flex;flex-direction:column;gap:6px}
+    .totals .row{display:flex;gap:40px}
+    .totals .row span:last-child{min-width:80px}
+    .total-row{font-size:15px;font-weight:700;color:#1f2937;padding-top:8px;border-top:1px solid #e5e7eb;margin-top:4px}
+    .sig{text-align:right}
+    .sig-name{font-size:26px;font-style:italic;font-weight:700;color:#1f2937;font-family:Georgia,serif}
+    .sig-label{font-size:9px;letter-spacing:.14em;color:#9ca3af;text-transform:uppercase;margin-top:4px}
+    .print-btn{position:fixed;top:16px;right:16px;background:#1f7a5a;color:#fff;border:none;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;font-family:inherit}
+    .print-btn:hover{background:#165f44}
+    @media print{.print-btn{display:none}.top-bar{margin:-48px -48px 40px}}
+  </style>
+</head><body>
+  <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+  <div class="top-bar"></div>
+  <div class="logo">kaya</div>
+  <div class="logo-sub">SKIN · HAIR · BODY</div>
+  <div class="logo-addr">14 Turner Road, Bandra West, Mumbai 400050 · +91 22 6789 1234 · Reg. MH-KY-00412</div>
+  <hr class="divider"/>
+  <div class="band">
+    <div><div class="band-label">Patient</div><div class="band-val">Priya R.</div><div class="band-sub">DOB 1997-03-14 · GDRC88421</div></div>
+    <div><div class="band-label">Prescribing Physician</div><div class="band-val">${rx.doctor}</div><div class="band-sub">Dermatology</div></div>
+    <div><div class="band-label">Age</div><div class="band-val">28 yrs · F</div></div>
+    <div><div class="band-label">Date Issued</div><div class="band-val">${rx.date}</div><div class="band-sub">Valid 30 days</div></div>
+  </div>
+  <hr class="divider"/>
+  <div class="section-label">Clinical Recommendation</div>
+  <div class="rec">${rx.recommendation}</div>
+  <div class="section-label">Treatment Plan</div>
+  <table>
+    <thead><tr><th>Problem</th><th>Product / Medicine</th><th>Dosage</th><th class="cost">Cost</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>${subtotal > 0 ? inr(subtotal) : '—'}</span></div>
+      <div class="row"><span>Dispensing fee</span><span>${inr(dispensing)}</span></div>
+      <div class="row total-row"><span>Estimated total</span><span>${inr(total)}</span></div>
+    </div>
+    <div class="sig">
+      <div class="sig-name">${rx.doctor.replace(/^Dr\.?\s*/i, '')}</div>
+      <div class="sig-label">Physician Signature</div>
+    </div>
+  </div>
+</body></html>`;
 
-  doc.save(`kaya-prescription-${rx.date.replace(/[\s,]/g, '-')}.pdf`);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 const PastContent = () => {
