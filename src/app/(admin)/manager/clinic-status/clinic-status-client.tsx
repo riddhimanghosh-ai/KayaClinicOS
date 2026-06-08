@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import type { ClinicStatus } from "@/lib/types";
 
 type DoctorLite = { id: number; name: string; specialty: string; branch_id: number; branch_name: string };
-type DoctorBlock  = { id: string; doctorId: number; date: string; startTime: string; endTime: string; reason: string };
+type DoctorBlock  = { id: string; doctorId: number; startDate: string; endDate: string; startTime: string; endTime: string; reason: string };
+
+const LS_KEY = "kaya_doctor_blocks";
+function loadBlocks(): DoctorBlock[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]"); } catch { return []; }
+}
+function saveBlocks(blocks: DoctorBlock[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LS_KEY, JSON.stringify(blocks));
+}
 type ApplianceBlock = { id: string; applianceId: string; startDate: string; endDate: string; reason: string };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -33,18 +43,22 @@ const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 // ── Seed data ────────────────────────────────────────────────────────────────
 
 function seedDoctorBlocks(doctors: DoctorLite[]): DoctorBlock[] {
+  // Prefer persisted blocks
+  const persisted = loadBlocks();
+  if (persisted.length) return persisted;
   if (!doctors.length) return [];
   const d = (n: number) => toYMD(addDays(new Date(), n));
-  return [
-    { i: 0, date: d(2),  start: "14:00", end: "18:00", reason: "CME Conference" },
-    { i: 0, date: d(9),  start: "09:00", end: "13:00", reason: "Half-day leave" },
-    { i: 1, date: d(4),  start: "09:00", end: "17:00", reason: "Annual leave" },
-    { i: 1, date: d(5),  start: "09:00", end: "17:00", reason: "Annual leave" },
-    { i: 2, date: d(7),  start: "13:00", end: "17:00", reason: "External clinic duty" },
-    { i: 0, date: d(14), start: "09:00", end: "17:00", reason: "Workshop — laser certification" },
+  const seed = [
+    { i: 0, sd: d(2),  ed: d(2),  start: "14:00", end: "18:00", reason: "CME Conference" },
+    { i: 0, sd: d(9),  ed: d(10), start: "09:00", end: "13:00", reason: "Half-day leave" },
+    { i: 1, sd: d(4),  ed: d(6),  start: "09:00", end: "17:00", reason: "Annual leave" },
+    { i: 2, sd: d(7),  ed: d(7),  start: "13:00", end: "17:00", reason: "External clinic duty" },
+    { i: 0, sd: d(14), ed: d(14), start: "09:00", end: "17:00", reason: "Workshop — laser certification" },
   ]
     .filter(s => s.i < doctors.length)
-    .map(s => ({ id: uid(), doctorId: doctors[s.i].id, date: s.date, startTime: s.start, endTime: s.end, reason: s.reason }));
+    .map(s => ({ id: uid(), doctorId: doctors[s.i].id, startDate: s.sd, endDate: s.ed, startTime: s.start, endTime: s.end, reason: s.reason }));
+  saveBlocks(seed);
+  return seed;
 }
 
 function seedApplianceBlocks(appliances: Array<{ id: string; name: string }>): ApplianceBlock[] {
@@ -167,11 +181,15 @@ function Calendar({
 // ── Doctor Section ────────────────────────────────────────────────────────────
 
 function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
-  const [blocks, setBlocks] = useState<DoctorBlock[]>(() => seedDoctorBlocks(doctors));
+  const [blocks, setBlocksRaw] = useState<DoctorBlock[]>(() => seedDoctorBlocks(doctors));
+  function setBlocks(fn: (prev: DoctorBlock[]) => DoctorBlock[]) {
+    setBlocksRaw(prev => { const next = fn(prev); saveBlocks(next); return next; });
+  }
   const [calYear, setCalYear]   = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
   const [formDoctorId, setFormDoctorId] = useState<number>(doctors[0]?.id ?? 0);
-  const [formDate, setFormDate]   = useState("");
+  const [formStartDate, setFormStartDate] = useState("");
+  const [formEndDate, setFormEndDate]     = useState("");
   const [formStart, setFormStart] = useState("09:00");
   const [formEnd, setFormEnd]     = useState("17:00");
   const [formReason, setFormReason] = useState("");
@@ -187,10 +205,10 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
   }
 
   function addBlock() {
-    if (!formDate || !formStart || !formEnd || !formDoctorId) return;
-    setBlocks(prev => [...prev, { id: uid(), doctorId: formDoctorId, date: formDate, startTime: formStart, endTime: formEnd, reason: formReason }]);
-    setFormDate("");
-    setFormReason("");
+    if (!formStartDate || !formStart || !formEnd || !formDoctorId) return;
+    const end = formEndDate && formEndDate >= formStartDate ? formEndDate : formStartDate;
+    setBlocks(prev => [...prev, { id: uid(), doctorId: formDoctorId, startDate: formStartDate, endDate: end, startTime: formStart, endTime: formEnd, reason: formReason }]);
+    setFormStartDate(""); setFormEndDate(""); setFormReason("");
   }
 
   const todayYmd = toYMD(new Date());
@@ -198,12 +216,12 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
   const in30  = addDays(today, 30);
 
   const upcoming = blocks
-    .filter(b => { const d = isoToLocal(b.date); return d >= today && d <= in30; })
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .filter(b => isoToLocal(b.endDate) >= today && isoToLocal(b.startDate) <= in30)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   function dayContent(d: Date) {
     const ymd = toYMD(d);
-    const dayBlocks = blocks.filter(b => b.date === ymd && (highlightId === null || b.doctorId === highlightId));
+    const dayBlocks = blocks.filter(b => b.startDate <= ymd && b.endDate >= ymd && (highlightId === null || b.doctorId === highlightId));
     if (!dayBlocks.length) return null;
     return (
       <div className="flex flex-col gap-0.5">
@@ -229,7 +247,7 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
       <div className="flex flex-wrap gap-2">
         {doctors.map((doc, i) => {
           const col     = DOC_COLORS[i % DOC_COLORS.length];
-          const blocked = blocks.some(b => b.doctorId === doc.id && b.date === todayYmd);
+          const blocked = blocks.some(b => b.doctorId === doc.id && b.startDate <= todayYmd && b.endDate >= todayYmd);
           return (
             <button
               key={doc.id}
@@ -263,7 +281,7 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
         {/* Calendar */}
         <div className="rounded-xl border border-border bg-card p-5">
           <Calendar year={calYear} month={calMonth} onNav={navMonth} dayContent={dayContent}
-            onDayClick={ymd => setFormDate(ymd)} />
+            onDayClick={ymd => { if (!formStartDate) setFormStartDate(ymd); else setFormEndDate(ymd); }} />
           {/* Color legend */}
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
             {doctors.map((doc, i) => {
@@ -293,18 +311,28 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
               </select>
             </div>
 
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Date <span className="normal-case text-primary">(or click a day)</span></label>
-              <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">
+                  Start Date <span className="normal-case text-primary">(click 1st day)</span>
+                </label>
+                <Input type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">
+                  End Date <span className="normal-case text-muted-foreground">(optional)</span>
+                </label>
+                <Input type="date" value={formEndDate} min={formStartDate} onChange={e => setFormEndDate(e.target.value)} />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">From</label>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">From time</label>
                 <Input type="time" value={formStart} onChange={e => setFormStart(e.target.value)} />
               </div>
               <div>
-                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">To</label>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">To time</label>
                 <Input type="time" value={formEnd} onChange={e => setFormEnd(e.target.value)} />
               </div>
             </div>
@@ -314,7 +342,7 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
               <Input placeholder="e.g. Conference, Leave" value={formReason} onChange={e => setFormReason(e.target.value)} />
             </div>
 
-            <Button className="w-full" size="sm" onClick={addBlock} disabled={!formDate || !formStart || !formEnd}>
+            <Button className="w-full" size="sm" onClick={addBlock} disabled={!formStartDate || !formStart || !formEnd}>
               <Plus className="h-4 w-4" /> Add Block
             </Button>
           </div>
@@ -337,7 +365,9 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
                     <div key={b.id} className={`flex items-start justify-between gap-2 rounded-lg border px-3 py-2 ${col.soft}`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold font-mono">{b.date}</span>
+                          <span className="text-[10px] font-bold font-mono">
+                            {b.startDate === b.endDate ? b.startDate : `${b.startDate} → ${b.endDate}`}
+                          </span>
                           <span className="text-xs font-semibold truncate">{name}</span>
                           <span className="text-[10px] opacity-70">{b.startTime}–{b.endTime}</span>
                         </div>
