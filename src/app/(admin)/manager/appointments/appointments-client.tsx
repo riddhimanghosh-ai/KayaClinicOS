@@ -240,18 +240,16 @@ export function AppointmentsClient({
     { key: "all",              label: "All",                  count: appts.length },
     { key: "booked",           label: "Needs Confirmation",   count: appts.filter(a => a.status === "booked").length,            hint: "Call to confirm they're coming" },
     { key: "confirmed",        label: "Confirmed",            count: appts.filter(a => a.status === "confirmed").length,          hint: "Waiting to arrive" },
-    { key: "checkout_pending", label: "Checkout Pending",     count: appts.filter(a => a.status === "arrived").length,            hint: "Patient here — collect payment", dot: STATUS_DOT["arrived"] },
+    { key: "checkout_pending", label: "Arrived",               count: appts.filter(a => a.status === "arrived").length,            hint: "Patient is here — start the consultation", dot: STATUS_DOT["arrived"] },
     { key: "in_consultation",  label: "In Consultation",      count: appts.filter(a => a.status === "in_consultation").length,    hint: "Currently with doctor" },
     { key: "in_session",       label: "In Treatment",         count: appts.filter(a => ["in_session","in_treatment"].includes(a.status)).length, hint: "Session underway" },
-    { key: "treatment_done",   label: "Treatment Done",       count: appts.filter(a => a.status === "treatment_done").length,     hint: "Needs inventory entry", dot: "bg-emerald-500" },
-    { key: "inventory_pending",label: "Inventory Pending",    count: appts.filter(a => a.status === "converted").length,          hint: "Session done — log materials used", dot: "bg-orange-400" },
+    { key: "inventory_pending",label: "Inventory Pending",    count: appts.filter(a => ["treatment_done","converted"].includes(a.status)).length, hint: "Treatment done — log materials used", dot: "bg-orange-400" },
     { key: "rescheduled",      label: "Rescheduled",          count: appts.filter(a => a.status === "rescheduled").length },
     { key: "no_show",          label: "No Show",              count: appts.filter(a => a.status === "no_show").length },
   ].filter(f => f.key === "all" || f.count > 0);
 
   const statusForFilter = (key: string) => {
     if (key === "checkout_pending") return "arrived";
-    if (key === "inventory_pending") return "converted";
     if (key === "in_session") return "in_session"; // handled below with multi-status
     return key;
   };
@@ -261,6 +259,7 @@ export function AppointmentsClient({
     .filter(a => {
       if (statusFilter === "all") return true;
       if (statusFilter === "in_session") return ["in_session","in_treatment"].includes(a.status);
+      if (statusFilter === "inventory_pending") return ["treatment_done","converted"].includes(a.status);
       return a.status === statusForFilter(statusFilter);
     })
     .filter(a => !searchLower || a.patient_name.toLowerCase().includes(searchLower) ||
@@ -1421,9 +1420,10 @@ function DetailDrawer({
                   </div>
 
                   {/* Session start */}
-                  {startedAt ? (
+                  {(startedAt || appt.status === "in_treatment") ? (
                     <div className="flex items-center gap-2 rounded-lg bg-success/5 border border-success/30 px-3 py-2.5 text-sm text-success font-medium">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />Session started at {startedAt}
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      {startedAt ? `Session started at ${startedAt}` : "Session in progress"}
                     </div>
                   ) : (
                     <Button className="w-full bg-primary hover:bg-primary/90" onClick={handleStartSession} disabled={saving}>
@@ -1432,7 +1432,7 @@ function DetailDrawer({
                   )}
 
                   {/* Treatment notes + complete (after session started) */}
-                  {(appt.status === "in_session" || startedAt) && (
+                  {(appt.status === "in_session" || appt.status === "in_treatment" || startedAt) && (
                     <div className="space-y-3">
                       <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Treatment Notes</div>
                       <textarea rows={4} value={treatmentNotes} onChange={e => setTreatmentNotes(e.target.value)}

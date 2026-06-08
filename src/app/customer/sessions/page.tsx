@@ -501,17 +501,19 @@ const MobileShell = ({ children }: any) => (
 const HistoryDesktop = () => {
   const [tab, setTab] = useState<Tab>('upcoming');
   const [showBooking, setShowBooking] = useState(false);
+  const next = UPCOMING[0];
 
   return (
     <div className="frame" style={{ display: 'flex' }}>
       <SharedNavRail active="appointments" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div className="topbar">
           <div>
-            <div className="eyebrow gold dot">Your Kaya story</div>
-            <div className="h3" style={{ marginTop: 6 }}>History</div>
+            <div className="eyebrow gold dot">Kaya · Patient Portal</div>
+            <div className="h3" style={{ marginTop: 6 }}>Appointments</div>
           </div>
           <div className="row center" style={{ gap: 10 }}>
+            <button className="btn ghost sm" onClick={() => setShowBooking(true)}>+ Book visit</button>
             <button className="btn ghost sm"><IconSearch size={14} /> Search</button>
             <button className="btn ghost sm" style={{ position: 'relative' }}>
               <IconBell size={14} />
@@ -519,6 +521,42 @@ const HistoryDesktop = () => {
             </button>
           </div>
         </div>
+
+        {/* Summary bar — next appointment + package progress */}
+        {next && (
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--hair)', flexShrink: 0 }}>
+            {/* Next appointment */}
+            <div style={{ flex: 1.4, background: 'var(--ink)', color: 'var(--paper)', padding: '18px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
+                  Next visit · {next.in}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{next.doc}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 3 }}>{next.treat} · {next.loc}</div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 22, fontWeight: 400, letterSpacing: '-0.02em', marginTop: 12 }}>
+                  {next.d} {next.dt} {next.mon} · {next.time}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {next.confirm && (
+                  <button style={{ background: 'var(--paper)', color: 'var(--ink)', border: 'none', padding: '9px 18px', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Confirm</button>
+                )}
+                <button style={{ background: 'transparent', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.18)', padding: '8px 18px', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--sans)' }}>Reschedule</button>
+              </div>
+            </div>
+            {/* Active package */}
+            <div style={{ flex: 1, padding: '18px 24px', borderLeft: '1px solid var(--hair)' }}>
+              <div style={{ fontSize: 10, fontFamily: 'var(--mono)', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mute)', marginBottom: 8 }}>Active package</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>HydraFacial · Phase 3</div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ flex: 1, height: 6, background: i <= 1 ? 'var(--gold)' : 'var(--hair-2)' }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 8 }}>1 of 4 used · 3 sessions remaining</div>
+            </div>
+          </div>
+        )}
 
         <TabStrip active={tab} onChange={setTab} desktop />
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--pad-4)' }}>
@@ -535,18 +573,35 @@ const HistoryDesktop = () => {
 const HistoryMobile = () => {
   const [tab, setTab] = useState<Tab>('upcoming');
   const [showBooking, setShowBooking] = useState(false);
+  const next = UPCOMING[0];
 
   return (
     <MobileShell>
       {showBooking && <BookingModal onClose={() => setShowBooking(false)} />}
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '14px 20px 12px', flexShrink: 0 }}>
-          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)', display: 'inline-block' }} /> Your Kaya story
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>History</div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ padding: '14px 20px 0', flexShrink: 0 }}>
+          <div className="eyebrow gold dot" style={{ marginBottom: 4 }}>Kaya · Patient Portal</div>
+          <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em' }}>Appointments</div>
         </div>
-        <TabStrip active={tab} onChange={setTab} />
+
+        {/* Next appointment mini-card */}
+        {next && (
+          <div style={{ margin: '12px 20px 0', background: 'var(--ink)', color: 'var(--paper)', padding: '14px 16px', flexShrink: 0 }}>
+            <div style={{ fontSize: 9, fontFamily: 'var(--mono)', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>
+              Next · {next.in}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{next.doc}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{next.treat}</div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 16, fontWeight: 400 }}>{next.d} {next.dt} · {next.time}</div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 12, flexShrink: 0 }}>
+          <TabStrip active={tab} onChange={setTab} />
+        </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px 100px' }}>
           <TabContent tab={tab} onBook={() => setShowBooking(true)} />
         </div>

@@ -26,8 +26,7 @@ const NAV_ITEMS = [
   {
     group: 'Care',
     items: [
-      { id: 'dashboard',    href: '/customer/dashboard',                        label: 'Overview',          icon: IconHome,     badge: null },
-      { id: 'appointments', href: '/customer/sessions',                         label: 'History',           icon: IconAppt,     badge: '2' },
+      { id: 'appointments', href: '/customer/sessions', label: 'Appointments', icon: IconAppt, badge: '2' },
     ],
   },
   {

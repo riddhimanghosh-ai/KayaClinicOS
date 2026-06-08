@@ -10,15 +10,15 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const NAV = [
-  { href: "/",              label: "Super Admin",    icon: LayoutDashboard },
-  { href: "/manager/appointments", label: "Clinic Manager", icon: Activity },
-  { href: "/doctor",        label: "Doctor Console", icon: Stethoscope },
-  { href: "/customer/dashboard", label: "Customer App",   icon: Smartphone },
+  { href: "/",                label: "Super Admin",    icon: LayoutDashboard },
+  { href: "/manager/today",   label: "Clinic Manager", icon: Activity },
+  { href: "/doctor",          label: "Doctor Console", icon: Stethoscope },
+  { href: "/customer/dashboard", label: "Customer App", icon: Smartphone },
 ];
 
 const MANAGER_SUBNAV = [
-  { href: "/manager/appointments", label: "Schedule Board",           icon: CalendarDays },
   { href: "/manager/today",        label: "Daily Ops",                icon: Zap },
+  { href: "/manager/appointments", label: "Schedule Board",           icon: CalendarDays },
   { href: "/manager/ops",          label: "Treatment & FnO",          icon: FlaskConical },
   { href: "/manager/clinic-status", label: "Clinic Ops",              icon: Activity },
   { href: "/manager/catalog",      label: "Catalogue",                icon: ShoppingBag },
@@ -41,7 +41,7 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
             ? pathname === "/"
             : href === "/customer/dashboard"
             ? pathname.startsWith("/customer")
-            : href === "/manager/appointments"
+            : href === "/manager/today"
             ? pathname.startsWith("/manager")
             : pathname.startsWith(href);
         return (
