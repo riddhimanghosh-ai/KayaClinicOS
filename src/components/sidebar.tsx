@@ -22,7 +22,7 @@ const MANAGER_SUBNAV = [
   { href: "/manager/ops",          label: "Treatment & FnO",          icon: FlaskConical },
   { href: "/manager/clinic-status", label: "Clinic Ops",              icon: Activity },
   { href: "/manager/catalog",      label: "Catalogue",                icon: ShoppingBag },
-  { href: "/manager",              label: "Cohorts & Outreach ^*",           icon: Sparkles },
+  { href: "/manager",              label: "Cohorts & Outreach *",            icon: Sparkles },
 ];
 
 const PORTAL_LABEL: Record<string, string> = {
