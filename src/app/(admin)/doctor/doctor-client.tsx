@@ -1787,35 +1787,35 @@ function ConsultSection({
         <div className="flex items-start justify-between border-t border-b border-border py-5 px-6">
 
           {/* LEFT: Post-consultation */}
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2.5">
             <button
               onClick={() => setShowNoteForm(v => !v)}
-              className={["h-12 w-12 rounded-full flex items-center justify-center shadow-sm transition-all border",
+              className={["h-16 w-16 rounded-full flex items-center justify-center shadow-md transition-all",
                 showNoteForm
-                  ? "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95"
-                  : "bg-secondary text-muted-foreground border-border hover:bg-secondary/80 active:scale-95",
+                  ? "bg-foreground text-background hover:bg-foreground/80 active:scale-95"
+                  : "bg-zinc-700 text-white hover:bg-zinc-600 active:scale-95",
               ].join(" ")}
             >
-              <MicOff className="h-4 w-4" />
+              <MicOff className="h-5 w-5" />
             </button>
-            <span className="text-[11px] font-medium text-muted-foreground">Post-consult</span>
+            <span className="text-xs font-medium text-foreground">Post-consult</span>
           </div>
 
           {/* RIGHT: Prescription */}
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2.5">
             <button
               onClick={() => setShowRx(v => !v)}
-              className={["h-12 w-12 rounded-full flex items-center justify-center shadow-sm transition-all border",
+              className={["h-16 w-16 rounded-full flex items-center justify-center shadow-md transition-all",
                 !rxActive
-                  ? "bg-muted/20 text-muted-foreground/40 border-border/40 backdrop-blur-sm cursor-default"
+                  ? "bg-zinc-300 text-zinc-500 cursor-default"
                   : showRx
-                  ? "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95"
-                  : "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95",
+                  ? "bg-foreground text-background hover:bg-foreground/80 active:scale-95"
+                  : "bg-zinc-700 text-white hover:bg-zinc-600 active:scale-95",
               ].join(" ")}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-5 w-5" />
             </button>
-            <span className={["text-[11px] font-medium", !rxActive ? "text-muted-foreground/40" : "text-muted-foreground"].join(" ")}>
+            <span className={["text-xs font-medium", !rxActive ? "text-zinc-400" : "text-foreground"].join(" ")}>
               {showRx ? "Close Rx" : "Prescription"}
             </span>
           </div>
