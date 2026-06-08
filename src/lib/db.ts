@@ -1372,13 +1372,17 @@ export function getMonthlyRevenue(monthsBack = 2): MonthlyRevenueSummary[] {
       `SELECT COUNT(*) AS cnt FROM sessions_consumed WHERE strftime('%Y-%m', session_date) = ?`
     ).get(month) as any).cnt as number;
 
-    const avgSvcPrice = col > 0 && sessCount > 0
-      ? col / (d.prepare(
-          `SELECT COALESCE(SUM(sessions_total),0) AS t FROM packages_purchased WHERE strftime('%Y-%m', purchase_date) = ?`
-        ).get(month) as any).t
-      : 0;
+    // Net revenue = sum of (price_per_session × sessions consumed this month per package)
+    const pkgNetRevenue = (d.prepare(
+      `SELECT COALESCE(SUM(
+         CAST(pp.collection_paid_inr AS REAL) / NULLIF(pp.sessions_total, 0)
+       ), 0) AS total
+       FROM sessions_consumed sc
+       JOIN packages_purchased pp ON pp.id = sc.package_id
+       WHERE strftime('%Y-%m', sc.session_date) = ?`
+    ).get(month) as any).total as number;
 
-    const netRevenue = sessCount * avgSvcPrice + prodCol;
+    const netRevenue = pkgNetRevenue + prodCol;
 
     results.push({ month, label, collection_inr: col + prodCol, net_revenue_inr: Math.round(netRevenue), sessions_consumed_count: sessCount });
   }
@@ -1519,6 +1523,37 @@ export function getPendingSessionPatients(): PendingSessionPatient[] {
     ORDER BY days_since_visit DESC NULLS LAST
     LIMIT 50
   `).all() as PendingSessionPatient[];
+}
+
+export function listZoneManagers(): Array<{ zone_name: string; zone_manager_name: string }> {
+  return db().prepare(`
+    SELECT DISTINCT zone_name, zone_manager_name
+    FROM branches
+    WHERE zone_name IS NOT NULL AND zone_manager_name IS NOT NULL
+    ORDER BY zone_name
+  `).all() as any[];
+}
+
+export function listBranchFinancials(): Array<{
+  branch_id: number;
+  collection_inr: number;
+  net_revenue_inr: number;
+  unearned_inr: number;
+}> {
+  return db().prepare(`
+    SELECT
+      p.home_branch_id AS branch_id,
+      COALESCE(SUM(pp.collection_paid_inr), 0) AS collection_inr,
+      COALESCE(SUM(
+        CAST(pp.collection_paid_inr AS REAL) * pp.sessions_used / NULLIF(pp.sessions_total, 0)
+      ), 0) AS net_revenue_inr,
+      COALESCE(SUM(
+        CAST(pp.collection_paid_inr AS REAL) * (pp.sessions_total - pp.sessions_used) / NULLIF(pp.sessions_total, 0)
+      ), 0) AS unearned_inr
+    FROM packages_purchased pp
+    JOIN patients p ON p.id = pp.patient_id
+    GROUP BY p.home_branch_id
+  `).all() as any[];
 }
 
 export function listBranchStats(): Array<{

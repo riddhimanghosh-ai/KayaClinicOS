@@ -44,7 +44,7 @@ const PAST = [
   {
     dt: '14', mon: 'Mar', year: '2025',
     doc: 'Dr. Ravi Krishnan', treat: 'Initial consultation', type: 'Consultation',
-    summary: 'Priya presented with mild post-inflammatory hyperpigmentation (PIH) and hormonal acne along the jawline. Skin type: Fitzpatrick III–IV. A 12-week structured protocol across four phases was agreed upon — starting with chemical peels for PIH followed by HydraFacial for barrier restoration.',
+    summary: 'Priya presented with mild post-inflammatory hyperpigmentation (PIH) and hormonal acne. Her skin type is Fitzpatrick III–IV. A structured 12‑week protocol was established, divided into four phases — beginning with chemical peels to target PIH, followed by HydraFacial treatments to restore and strengthen the skin barrier.',
   },
 ];
 
@@ -227,20 +227,134 @@ const UpcomingContent = ({ onBook }: { onBook: () => void }) => (
   </div>
 );
 
+const CONSULTATION_IDX = PAST.length - 1; // Initial consultation is always the last entry
+
+async function downloadPrescription() {
+  const { jsPDF } = await import('jspdf');
+  const rx = PRESCRIPTIONS[1]; // Initial prescription (Mar 14)
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const margin = 48;
+  let y = margin;
+
+  // Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('Kaya Skin Clinic', margin, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text('MEDICAL PRESCRIPTION', margin, y + 16);
+  doc.setTextColor(100);
+  doc.text(rx.doctor, W - margin, y, { align: 'right' });
+  doc.text(rx.date, W - margin, y + 14, { align: 'right' });
+  y += 32;
+
+  // Divider
+  doc.setDrawColor(30);
+  doc.setLineWidth(1.2);
+  doc.line(margin, y, W - margin, y);
+  y += 20;
+
+  // Patient
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.setFont('helvetica', 'normal');
+  doc.text('PATIENT', margin, y);
+  y += 14;
+  doc.setFontSize(14);
+  doc.setTextColor(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Priya R.', margin, y);
+  y += 24;
+
+  // Clinical note box
+  doc.setFillColor(248, 248, 248);
+  const noteLines = doc.splitTextToSize(rx.recommendation, W - margin * 2 - 24);
+  const noteH = noteLines.length * 16 + 28;
+  doc.roundedRect(margin, y, W - margin * 2, noteH, 2, 2, 'F');
+  doc.setDrawColor(30);
+  doc.setLineWidth(2);
+  doc.line(margin, y, margin, y + noteH);
+  doc.setFontSize(7.5);
+  doc.setTextColor(140);
+  doc.setFont('helvetica', 'normal');
+  doc.text('CLINICAL NOTE', margin + 10, y + 14);
+  doc.setFontSize(11);
+  doc.setTextColor(40);
+  doc.setFont('helvetica', 'italic');
+  doc.text(noteLines, margin + 10, y + 26);
+  y += noteH + 20;
+
+  // Table header
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(30);
+  doc.line(margin, y, W - margin, y);
+  y += 10;
+  const colX = [margin, margin + 180, margin + 340];
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(120);
+  ['PROBLEM', 'PRODUCT', 'DOSAGE'].forEach((h, i) => doc.text(h, colX[i], y));
+  y += 8;
+  doc.line(margin, y, W - margin, y);
+  y += 14;
+
+  // Table rows
+  rx.items.forEach(item => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(20);
+    doc.text(item.problem, colX[0], y, { maxWidth: 170 });
+    doc.text(item.product, colX[1], y, { maxWidth: 150 });
+    doc.text(item.dosage, colX[2], y, { maxWidth: 130 });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    if (item.type) doc.text(item.type.toUpperCase(), colX[0], y + 13);
+    doc.text(item.detail, colX[1], y + 13);
+    doc.text(item.dosageDetail, colX[2], y + 13, { maxWidth: 130 });
+    y += 36;
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y - 8, W - margin, y - 8);
+    doc.setDrawColor(30);
+  });
+
+  // Footer
+  y = doc.internal.pageSize.getHeight() - 36;
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(200);
+  doc.line(margin, y, W - margin, y);
+  doc.setFontSize(8);
+  doc.setTextColor(180);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Kaya Skin Clinic · Internal prescription · Not for external use', W / 2, y + 14, { align: 'center' });
+
+  doc.save(`kaya-prescription-${rx.date.replace(/[\s,]/g, '-')}.pdf`);
+}
+
 const PastContent = () => {
-  const [expanded, setExpanded] = useState<number | null>(0);
+  // Initial consultation (last item) is always open and cannot be collapsed
+  const [expanded, setExpanded] = useState<number | null>(CONSULTATION_IDX);
+
+  const handleToggle = (i: number, open: boolean) => {
+    if (i === CONSULTATION_IDX) return; // never collapse the consultation
+    setExpanded(open ? null : i);
+  };
+
   return (
     <div>
       <div style={{ fontSize: 13, color: 'var(--mute)', marginBottom: 16 }}>Tap any visit to read the session note.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, border: '1px solid var(--hair)' }}>
         {PAST.map((p, i) => {
-          const open = expanded === i;
+          const open    = expanded === i;
+          const locked  = i === CONSULTATION_IDX;
           return (
             <div key={i} style={{ borderBottom: i < PAST.length - 1 ? '1px solid var(--hair)' : 'none' }}>
-              {/* Row header — always visible, clickable */}
               <div
-                onClick={() => setExpanded(open ? null : i)}
-                style={{ display: 'flex', gap: 14, padding: '14px 18px', cursor: 'pointer', alignItems: 'flex-start', background: open ? 'var(--paper-2)' : 'var(--paper)', transition: 'background 0.15s' }}
+                onClick={() => handleToggle(i, open)}
+                style={{ display: 'flex', gap: 14, padding: '14px 18px', cursor: locked ? 'default' : 'pointer', alignItems: 'flex-start', background: open ? 'var(--paper-2)' : 'var(--paper)', transition: 'background 0.15s' }}
               >
                 <div className="num" style={{ fontSize: 12, color: 'var(--mute)', minWidth: 56, flexShrink: 0, paddingTop: 1 }}>{p.mon} {p.dt}</div>
                 <div style={{ flex: 1 }}>
@@ -249,10 +363,9 @@ const PastContent = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, paddingTop: 1 }}>
                   <span className="tag" style={{ fontSize: 10 }}>{p.type}</span>
-                  <IconChevron size={14} style={{ color: 'var(--mute)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  {!locked && <IconChevron size={14} style={{ color: 'var(--mute)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
                 </div>
               </div>
-              {/* Expanded summary */}
               {open && (
                 <div style={{ padding: '0 18px 16px 88px', background: 'var(--paper-2)' }}>
                   <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.7, fontStyle: 'italic', borderLeft: '2px solid var(--gold)', paddingLeft: 12 }}>
@@ -260,7 +373,7 @@ const PastContent = () => {
                   </div>
                   {p.type === 'Consultation' && (
                     <div style={{ marginTop: 12 }}>
-                      <button className="btn ghost sm" style={{ fontSize: 11 }}>
+                      <button className="btn ghost sm" style={{ fontSize: 11 }} onClick={downloadPrescription}>
                         ↓ Download prescription
                       </button>
                     </div>

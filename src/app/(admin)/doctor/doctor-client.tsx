@@ -1767,7 +1767,7 @@ function ConsultSection({
     setTimeout(() => {
       setNoteProcessing(false);
       setNoteResult({
-        note: "Acne has cleared really well — the hormonal jawline breakouts are almost gone, down to maybe one or two spots. The post-peel barrier is intact, no unusual sensitivity or dryness. PIH is visibly reducing, probably around 14% better than baseline from what I can see. She is compliant with the SPF, which is great. The scar texture on the left cheek — the boxcar ones — is still there and that's our next focus. I think she's ready for microneedling. Diet has improved, she's added eggs and lentils like we discussed. She did mention stress at work is elevated, which could be slowing the hormonal recovery — I've asked her to monitor. Overall, phase 2 outcome is positive. Ready to start phase 3.",
+        note: "Priya presented with mild post‑inflammatory hyperpigmentation (PIH) and hormonal acne, with a skin type classified as Fitzpatrick III–IV. A comprehensive 12‑week structured protocol was agreed upon, divided into four progressive phases. The treatment plan begins with targeted chemical peels to address PIH and promote a more even complexion, followed by HydraFacial sessions to restore barrier integrity and enhance hydration. Subsequent phases will focus on controlling hormonal acne through tailored interventions and consolidating results with maintenance strategies to support long‑term skin health and resilience.",
         tags: {
           acne_status:         "mild hormonal — jawline, reducing",
           barrier_status:      "intact post-peel, no sensitivity",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Loader2, Search, UserRound, MapPin, MessageSquare, Sparkles, Phone, Calendar, TrendingUp, AlertCircle, Gift, Users } from "lucide-react";
+import { Loader2, UserRound, MapPin, MessageSquare, Sparkles, Phone, Calendar, TrendingUp, AlertCircle, Gift, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ export function PatientsClient({
 }: {
   patients: Patient[];
 }) {
-  const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [portfolio, setPortfolio] = useState<PatientPortfolio | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,13 +34,6 @@ export function PatientsClient({
       if (Number.isFinite(id)) loadPortfolio(id);
     }
   }, []);
-
-  const filtered = search.trim()
-    ? patients.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.phone.includes(search)
-      )
-    : patients;
 
   const loadPortfolio = async (id: number) => {
     setSelectedId(id);
@@ -79,35 +71,6 @@ export function PatientsClient({
 
   return (
     <div className="space-y-6">
-    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-      {/* Sidebar search */}
-      <aside>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Search patients</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or phone…" className="pl-9 h-9 text-sm" />
-            </div>
-            <div className="max-h-[500px] overflow-y-auto space-y-0.5">
-              {filtered.slice(0, 40).map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => loadPortfolio(p.id)}
-                  className={`w-full text-left rounded-md border px-3 py-2 transition-colors text-sm ${
-                    selectedId === p.id ? "border-accent bg-accent/10 font-medium" : "border-transparent hover:bg-secondary"
-                  }`}
-                >
-                  <div className="font-medium leading-tight">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">{p.phone}</div>
-                </button>
-              ))}
-            </div>
-            <div className="text-xs text-muted-foreground">{patients.length} patients across all branches</div>
-          </CardContent>
-        </Card>
-      </aside>
-
       {/* Portfolio */}
       <section>
         {!selectedId && !loading && (
@@ -278,7 +241,6 @@ export function PatientsClient({
           </div>
         )}
       </section>
-    </div>
     </div>
   );
 }

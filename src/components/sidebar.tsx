@@ -1,26 +1,118 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
-  Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X,
-  FlaskConical, Smartphone, ShoppingBag, ChevronLeft, ChevronRight,
+  Activity, Stethoscope, Smartphone, ChevronLeft, ChevronRight,
+  Menu, X, Globe, ChevronDown, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/",                   label: "Super Admin",    icon: LayoutDashboard },
+  { href: "/zone-manager",       label: "Super Admin",    icon: Globe },
   { href: "/manager/today",      label: "Clinic Manager", icon: Activity },
   { href: "/doctor",             label: "Doctor Console", icon: Stethoscope },
   { href: "/customer/dashboard", label: "Customer App",   icon: Smartphone },
 ];
 
 const PORTAL_LABEL: Record<string, string> = {
-  "/manager": "Manager Portal",
-  "/doctor":  "Doctor Portal",
-  "/customer":"Customer App",
+  "/manager":      "Manager Portal",
+  "/doctor":       "Doctor Portal",
+  "/customer":     "Customer App",
+  "/zone-manager": "Super Admin",
 };
+
+const ROLES = [
+  { key: "doctor",       label: "Doctor",         sub: "Clinical portal",    href: "/doctor",         Icon: Stethoscope },
+  { key: "manager",      label: "Clinic Manager", sub: "Branch operations",  href: "/manager/today",  Icon: Activity    },
+  { key: "zone_manager", label: "Super Admin",     sub: "Multi-clinic view",  href: "/zone-manager",   Icon: Globe       },
+] as const;
+
+type RoleKey = typeof ROLES[number]["key"];
+
+function RoleSwitcher({ collapsed }: { collapsed: boolean }) {
+  const router    = useRouter();
+  const [open, setOpen]     = useState(false);
+  const [role, setRole]     = useState<RoleKey>("manager");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("demo_role") as RoleKey | null;
+      if (saved && ROLES.find(r => r.key === saved)) setRole(saved);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const current = ROLES.find(r => r.key === role)!;
+
+  const select = (r: typeof ROLES[number]) => {
+    setRole(r.key);
+    try { localStorage.setItem("demo_role", r.key); } catch {}
+    setOpen(false);
+    router.push(r.href);
+  };
+
+  if (collapsed) {
+    return (
+      <button
+        onClick={() => setOpen(v => !v)}
+        title={`Demo: ${current.label}`}
+        className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors relative"
+      >
+        <current.Icon className="h-3.5 w-3.5" />
+      </button>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-secondary transition-colors text-left"
+      >
+        <div className="h-6 w-6 shrink-0 flex items-center justify-center bg-foreground/10 border border-border rounded-sm">
+          <current.Icon className="h-3 w-3 text-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-foreground leading-tight truncate">{current.label}</div>
+          <div className="text-[10px] text-muted-foreground font-mono leading-tight">Demo mode</div>
+        </div>
+        <ChevronDown className={cn("h-3 w-3 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-card border border-border shadow-lg z-50">
+          <div className="px-3 py-2 border-b border-border">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">View as</span>
+          </div>
+          {ROLES.map(r => (
+            <button
+              key={r.key}
+              onClick={() => select(r)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-secondary transition-colors text-left"
+            >
+              <r.Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium text-foreground">{r.label}</div>
+                <div className="text-[10px] text-muted-foreground font-mono">{r.sub}</div>
+              </div>
+              {role === r.key && <Check className="h-3 w-3 text-primary shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function NavLinks({ onClick, collapsed }: { onClick?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
@@ -28,12 +120,12 @@ function NavLinks({ onClick, collapsed }: { onClick?: () => void; collapsed?: bo
     <ul className="space-y-px">
       {NAV.map(({ href, label, icon: Icon }) => {
         const active =
-          href === "/"
-            ? pathname === "/"
-            : href === "/customer/dashboard"
+          href === "/customer/dashboard"
             ? pathname.startsWith("/customer")
             : href === "/manager/today"
             ? pathname.startsWith("/manager")
+            : href === "/zone-manager"
+            ? pathname.startsWith("/zone-manager")
             : pathname.startsWith(href);
         return (
           <li key={href}>
@@ -65,7 +157,6 @@ export function Sidebar() {
   const portalLabel = PORTAL_LABEL[base];
 
   const [collapsed, setCollapsed] = useState(false);
-  // Restore from localStorage after mount
   useEffect(() => {
     try {
       if (localStorage.getItem("sidebar_collapsed") === "true") setCollapsed(true);
@@ -89,7 +180,7 @@ export function Sidebar() {
         "flex h-14 items-center border-b border-border",
         collapsed ? "justify-center px-0" : "gap-3 px-4 justify-between"
       )}>
-        <Link href="/" className="flex items-center gap-3 min-w-0">
+        <Link href="/manager/today" className="flex items-center gap-3 min-w-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-foreground bg-foreground text-background font-bold text-sm font-mono">
             K
           </div>
@@ -101,11 +192,8 @@ export function Sidebar() {
           )}
         </Link>
         {!collapsed && (
-          <button
-            onClick={toggle}
-            title="Collapse sidebar"
-            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
-          >
+          <button onClick={toggle} title="Collapse sidebar"
+            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0">
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
         )}
@@ -120,34 +208,35 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className={cn("flex-1 py-3 overflow-y-auto", collapsed ? "px-1" : "px-3")}>
+        {collapsed && (
+          <div className="mb-2 flex justify-center">
+            <button onClick={toggle} title="Expand sidebar"
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {!collapsed && (
           <div className="mb-2 px-3 text-[10px] font-mono font-medium uppercase tracking-widest text-muted-foreground">Portals</div>
         )}
         <NavLinks collapsed={collapsed} />
       </nav>
 
-      {/* Footer / expand button */}
-      <div className={cn("border-t border-border", collapsed ? "py-3 flex justify-center" : "px-5 py-4")}>
-        {collapsed ? (
-          <button
-            onClick={toggle}
-            title="Expand sidebar"
-            className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        ) : (
-          <>
-            <div className="text-xs font-semibold text-foreground tracking-tight">Kaya Skin Clinic</div>
-            <div className="mt-1 text-[10px] text-muted-foreground font-mono">Bandra 1 · Bandra 2 · Mumbai Zone</div>
-            <div className="mt-2 flex items-center gap-1.5">
+      {/* Footer */}
+      <div className={cn("border-t border-border", collapsed ? "py-3 flex flex-col items-center gap-2" : "px-3 py-3 space-y-3")}>
+        {/* Role switcher */}
+        <RoleSwitcher collapsed={collapsed} />
+
+        {!collapsed && (
+          <div className="px-2 space-y-1.5">
+            <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-success inline-block" />
               <span className="text-[10px] text-muted-foreground font-mono">System online</span>
             </div>
-            <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="pt-2 border-t border-border/50">
               <span className="text-[9px] text-muted-foreground/60 font-mono">* Future scope</span>
             </div>
-          </>
+          </div>
         )}
       </div>
     </aside>
@@ -163,7 +252,7 @@ export function MobileTopbar() {
   return (
     <>
       <div className="md:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card px-4">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
+        <Link href="/manager/today" className="flex items-center gap-2" onClick={() => setOpen(false)}>
           <div className="flex h-8 w-8 items-center justify-center border border-foreground bg-foreground text-background text-xs font-bold font-mono">K</div>
           <div>
             <span className="text-sm font-semibold tracking-tight">Kaya OS</span>
@@ -172,16 +261,12 @@ export function MobileTopbar() {
             )}
           </div>
         </Link>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
-          aria-label="Toggle menu"
-        >
+        <button onClick={() => setOpen(v => !v)}
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary" aria-label="Toggle menu">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="md:hidden fixed inset-0 z-30 flex">
           <div className="fixed inset-0 bg-black/40" onClick={() => setOpen(false)} />
